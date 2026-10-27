@@ -1,0 +1,16 @@
+#didijjit-bar {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2147483647;
+  display: flex; align-items: center; gap: 10px; max-width: min(860px, calc(100vw - 32px));
+  padding: 10px 14px; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25);
+  font: 14px/1.4 system-ui, sans-serif; color: #1f2a24; background: #fff; border: 1px solid #dfe5e0;
+}
+#didijjit-bar .jr-logo { font-weight: 800; color: #fff; background: #1c3d2e; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+#didijjit-bar .jr-text { flex: 1; }
+#didijjit-bar button {
+  font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid #2d6a4a; background: #2d6a4a; color: #fff; padding: 5px 10px; white-space: nowrap;
+}
+#didijjit-bar button.jr-close { background: transparent; color: #5d6b63; border: 0; font-size: 20px; padding: 0 4px; }
+#didijjit-bar.jr-warn { background: #fdf3dc; border-color: #f0d69a; }
+#didijjit-bar.jr-done { background: #e6efe9; border-color: #3f8a60; }
+#didijjit-bar.jr-ask { background: #fff; border-color: #f2b84b; }
+#didijjit-bar.jr-off { background: #f3f3f3; color: #5d6b63; }

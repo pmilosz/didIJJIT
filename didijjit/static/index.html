@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>didIJJIT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#f8f6f0;--g5:#3f8a60;--g7:#2d6a4a;--g9:#1c3d2e;--ink:#1f2a24;--line:#dfe5e0;--mint:#e6efe9;--muted:#5d6b63;--sun:#f2b84b;--red:#a8432f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif}
+header{background:var(--g9);color:#fff;padding:18px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+header h1{font:28px "DM Serif Display",serif;margin:0;letter-spacing:.3px}
+header h1 b{color:var(--sun);font-weight:400}
+header .meta{color:#bcd3c5;font-size:13px;flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px}
+button:hover{border-color:var(--g5)}
+button.primary{background:var(--sun);border-color:var(--sun);color:var(--g9);font-weight:700;padding:9px 18px}
+button.primary:disabled{opacity:.6;cursor:wait}
+button.on{background:var(--g7);border-color:var(--g7);color:#fff}
+button.danger{color:var(--red)}
+main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+nav .sep{width:1px;height:24px;background:var(--line);margin:0 6px}
+nav input{margin-left:auto;padding:7px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;min-width:220px}
+.count{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--mint);color:var(--g7);font-size:12px;font-weight:700}
+button.on .count{background:rgba(255,255,255,.2);color:#fff}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:8px 16px}
+.card.fresh{border-left:5px solid var(--sun)}
+.card.st-aplikowalem{border-left:5px solid var(--g5)}
+.card.st-nie_interesuje{opacity:.6}
+.title{font-weight:700;font-size:16px;color:var(--g9);text-decoration:none}
+.title:hover{text-decoration:underline}
+.badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:2px}
+.b-new{background:var(--sun);color:var(--g9)}
+.b-app{background:var(--g5);color:#fff}
+.sub{color:var(--muted);font-size:13.5px}
+.sub b{color:var(--ink);font-weight:600}
+.warn{grid-column:1/-1;background:#fdf3dc;border:1px solid #f0d69a;border-radius:8px;padding:6px 10px;font-size:13.5px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start}
+.note{grid-column:1/-1;display:flex;gap:6px}
+.note input{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+th{background:var(--mint);color:var(--g9);font-size:12.5px;text-transform:uppercase;letter-spacing:.4px}
+td input{width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13.5px}
+.k-wyslana{color:var(--g7);font-weight:700}.k-formularz{color:#9a6b00;font-weight:700}.k-obejrzana{color:var(--muted)}
+details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
+details div{font-size:12px;color:var(--muted);word-break:break-all}
+form.add{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+form.add input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--g9);color:#fff;padding:10px 18px;border-radius:10px;display:none}
+h2{font:22px "DM Serif Display",serif;color:var(--g9);margin:8px 0}
+.hint{color:var(--muted);font-size:13.5px;margin:4px 0 12px}
+@media(max-width:700px){.card{grid-template-columns:1fr}.actions{justify-content:flex-start}nav input{margin-left:0;width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1 title="Did I Just Join IT?">didI<b>JJIT</b>?</h1>
+  <div class="meta" id="meta">…</div>
+  <button class="primary" id="refresh">Odśwież oferty</button>
+</header>
+<main>
+  <nav id="nav"></nav>
+  <section id="view"></section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const TABS = [
+  ["nowe", "Nowe"], ["aktywne", "Wszystkie"], ["przejrzane", "Przejrzane"],
+  ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["wygasle", "Wygasłe"],
+];
+const STATUS = [["przejrzana", "Przejrzana"], ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["nowa", "Nowa"]];
+let view = localStorage.getItem("view") || "nowe", query = "", summary = null;
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (iso) => iso ? new Date(iso).toLocaleString("pl-PL", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}) : "";
+const day = (iso) => iso ? new Date(iso.length === 10 ? iso + "T12:00" : iso).toLocaleDateString("pl-PL") : "";
+const today = () => new Date().toISOString().slice(0, 10);
+
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3500); }
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {headers: {"Content-Type": "application/json"}, ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined});
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : r.statusText);
+  return data;
+}
+
+async function loadSummary() {
+  summary = await api("/api/summary");
+  const l = summary.last_refresh;
+  const c = summary.config;
+  const scope = `${c.categories.join(", ")} · ${[...c.cities, ...(c.remote ? ["zdalnie"] : [])].join(", ")} (${c.source})`;
+  $("#meta").textContent = (l ? `Ostatnie odświeżenie: ${fmt(l.at)} · pobrano ${l.fetched}, nowych ${l.added}` : "Jeszcze nie pobrano ofert — kliknij „Odśwież oferty”.") + " · " + scope;
+  renderNav();
+}
+
+function renderNav() {
+  const c = summary?.counts || {};
+  $("#nav").innerHTML = TABS.map(([k, label]) => `<button data-v="${k}" class="${view === k ? "on" : ""}">${label}<span class="count">${c[k] ?? 0}</span></button>`).join("")
+    + `<span class="sep"></span><button data-v="aplikacje" class="${view === "aplikacje" ? "on" : ""}">Moje aplikacje<span class="count">${summary?.applications ?? 0}</span></button>`
+    + `<button data-v="historia" class="${view === "historia" ? "on" : ""}">Import z historii</button>`
+    + (["aplikacje", "historia"].includes(view) ? "" : `<input id="q" placeholder="Szukaj: stanowisko, firma, miasto" value="${esc(query)}">`);
+  document.querySelectorAll("#nav button").forEach((b) => b.onclick = () => { view = b.dataset.v; localStorage.setItem("view", view); renderNav(); render(); });
+  const q = $("#q");
+  if (q) q.oninput = () => { query = q.value; clearTimeout(q._h); q._h = setTimeout(render, 250); };
+}
+
+async function render() {
+  if (view === "aplikacje") return renderApplications();
+  if (view === "historia") return renderHistory();
+  const rows = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}`);
+  if (!rows.length) { $("#view").innerHTML = `<div class="empty">Brak ofert w tym widoku.</div>`; return; }
+  $("#view").innerHTML = rows.map(cardHtml).join("");
+  document.querySelectorAll("[data-st]").forEach((b) => b.onclick = () => setStatus(b.closest(".card").dataset.g, b.dataset.st));
+  document.querySelectorAll(".note input").forEach((i) => i.onchange = () => api(`/api/offers/${i.closest(".card").dataset.g}/note`, {method: "POST", body: {note: i.value}}).then(() => toast("Notatka zapisana")));
+}
+
+function cardHtml(o) {
+  const isNew = o.status === "nowa";
+  const hist = o.company_history.map((a) => `${day(a.applied_at)}${a.title ? " – " + esc(a.title) : ""}`).join("; ");
+  return `<div class="card st-${o.status} ${isNew && o.fresh ? "fresh" : ""}" data-g="${o.guid}">
+    <div>
+      <a class="title" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>
+      ${isNew ? `<span class="badge b-new">${o.fresh ? "Nowa" : "Nieprzejrzana"}</span>` : ""}
+      ${o.status === "aplikowalem" ? `<span class="badge b-app">Aplikowałem ${day(o.status_at)}</span>` : ""}
+      <div class="sub"><b>${esc(o.company)}</b> · ${esc(o.city)} · ${esc(o.workplace)} · ${esc(o.experience)} · ${esc(o.category)}</div>
+      <div class="sub">${o.salary ? esc(o.salary) + " · " : ""}opublikowana ${fmt(o.published_at)}</div>
+    </div>
+    <div class="actions">
+      ${STATUS.filter(([k]) => k !== o.status && !(k === "nowa" && o.status === "nowa")).map(([k, l]) => `<button data-st="${k}">${l}</button>`).join("")}
+    </div>
+    ${hist ? `<div class="warn">Już aplikowałeś do tej firmy: ${hist}</div>` : ""}
+    <div class="note"><input placeholder="Notatka (zapis po wyjściu z pola)" value="${esc(o.note)}"></div>
+  </div>`;
+}
+
+async function setStatus(guid, status) {
+  let body = {status};
+  if (status === "aplikowalem") {
+    const d = prompt("Data aplikacji (RRRR-MM-DD):", today());
+    if (d === null) return;
+    body.applied_at = d;
+  }
+  try { await api(`/api/offers/${guid}/status`, {method: "POST", body}); } catch (e) { return toast(e.message); }
+  await loadSummary(); render();
+}
+
+async function renderApplications() {
+  const rows = await api("/api/applications");
+  const src = {reczna: "ręcznie", historia: "z historii", brave: "z historii", oferta: "z listy ofert", wtyczka: "z wtyczki"};
+  $("#view").innerHTML = `<h2>Moje aplikacje</h2>
+    <p class="hint">Wszystkie miejsca, do których wysłałeś CV. Z tej listy powstaje ostrzeżenie „już aplikowałeś do tej firmy”.</p>
+    <form class="add" id="add">
+      <input name="company" placeholder="Firma *" required>
+      <input name="title" placeholder="Stanowisko">
+      <input name="url" placeholder="Link do oferty">
+      <input name="applied_at" type="date" value="${today()}" required>
+      <input name="note" placeholder="Notatka">
+      <button class="on">Dodaj aplikację</button>
+    </form>
+    <table><tr><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Źródło</th><th>Notatka</th><th></th></tr>
+    ${rows.map((a) => `<tr><td>${day(a.applied_at)}</td><td><b>${esc(a.company)}</b></td>
+      <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title || a.url)}</a>` : esc(a.title)}</td>
+      <td>${src[a.source] || a.source}</td><td>${esc(a.note)}</td>
+      <td><button class="danger" data-del="${a.id}">Usuń</button></td></tr>`).join("")}
+    </table>`;
+  $("#add").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target));
+    try { await api("/api/applications", {method: "POST", body: f}); } catch (err) { return toast(err.message); }
+    toast("Dodano"); await loadSummary(); render();
+  };
+  document.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+    if (!confirm("Usunąć ten wpis?")) return;
+    await api(`/api/applications/${b.dataset.del}`, {method: "DELETE"}); await loadSummary(); render();
+  });
+}
+
+async function renderHistory() {
+  $("#view").innerHTML = `<div class="empty">Czytam kopię historii przeglądarek…</div>`;
+  let data;
+  try { data = await api("/api/history/candidates"); } catch (e) { $("#view").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const kinds = {wyslana: "Wysłana (strona „dziękujemy”)", formularz: "Otwarty formularz", obejrzana: "Tylko obejrzana"};
+  $("#view").innerHTML = `<h2>Import z historii przeglądarek</h2>
+    <p class="hint">Przeglądarki: ${esc(data.browsers.join(", "))} · profile: ${data.profiles}. Zaznacz pozycje, do których naprawdę wysłałeś CV, i popraw firmę lub stanowisko.
+    Kliknięcie „Zapisz” doda zaznaczone do „Moich aplikacji”, a niezaznaczone oznaczy jako sprawdzone, więc nie pojawią się ponownie.
+    Pozycje „tylko obejrzana” są z ostatnich 60 dni.</p>
+    ${data.items.length ? `<table><tr><th></th><th>Ślad</th><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Link</th></tr>
+    ${data.items.map((c, i) => `<tr data-i="${i}">
+      <td><input type="checkbox" ${c.kind === "wyslana" ? "checked" : ""}></td>
+      <td class="k-${c.kind}">${kinds[c.kind]}</td>
+      <td><input name="applied_at" type="date" value="${c.date}"></td>
+      <td><input name="company" value="${esc(c.company)}" placeholder="uzupełnij"></td>
+      <td><input name="title" value="${esc(c.title)}"></td>
+      <td><a href="${esc(c.url)}" target="_blank" rel="noopener">otwórz</a>
+        ${c.evidence.length ? `<details><summary>ślady</summary><div>${c.evidence.map(esc).join("<br>")}</div></details>` : ""}</td>
+    </tr>`).join("")}</table>
+    <p><button class="primary" id="save">Zapisz</button></p>` : `<div class="empty">Nic nowego w historii — wszystko już sprawdzone.</div>`}`;
+  const save = $("#save");
+  if (!save) return;
+  save.onclick = async () => {
+    const items = [], dismiss = [];
+    document.querySelectorAll("tr[data-i]").forEach((tr) => {
+      const c = data.items[tr.dataset.i];
+      const val = (n) => tr.querySelector(`[name=${n}]`).value;
+      if (tr.querySelector("[type=checkbox]").checked) items.push({company: val("company"), title: val("title"), url: c.url, applied_at: val("applied_at"), history_key: c.key});
+      else dismiss.push(c.key);
+    });
+    const missing = items.filter((i) => !i.company.trim());
+    if (missing.length) return toast(`Uzupełnij firmę w ${missing.length} zaznaczonych pozycjach`);
+    if (!confirm(`Dodać ${items.length} aplikacji i oznaczyć ${dismiss.length} pozycji jako sprawdzone?`)) return;
+    try { const r = await api("/api/history/import", {method: "POST", body: {items, dismiss}}); toast(`Dodano ${r.imported}, pominięto ${r.dismissed}`); } catch (e) { return toast(e.message); }
+    await loadSummary(); render();
+  };
+}
+
+$("#refresh").onclick = async () => {
+  const b = $("#refresh"); b.disabled = true; b.textContent = "Pobieram…";
+  try { const r = await api("/api/refresh", {method: "POST"}); toast(`Pobrano ${r.fetched} ofert, nowych: ${r.added}`); }
+  catch (e) { toast(e.message); }
+  b.disabled = false; b.textContent = "Odśwież oferty";
+  await loadSummary(); render();
+};
+
+loadSummary().then(render);
+</script>
+</body>
+</html>

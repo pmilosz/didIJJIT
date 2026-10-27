@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "didIJJIT",
+  "version": "1.0.0",
+  "description": "Na justjoin.it pokazuje, czy już aplikowałeś do firmy, i pozwala zapisać wysłane CV w lokalnym programie didIJJIT.",
+  "host_permissions": ["https://justjoin.it/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://justjoin.it/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": { "page": "options.html" },
+  "icons": { "48": "icon48.png", "128": "icon128.png" },
+  "browser_specific_settings": {
+    "gecko": { "id": "didijjit@localhost", "strict_min_version": "121.0" }
+  }
+}

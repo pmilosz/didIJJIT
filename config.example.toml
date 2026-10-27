@@ -1,0 +1,42 @@
+# didIJJIT — ustawienia. Skopiuj ten plik jako config.toml i zmień pod siebie.
+# Zmiany działają po ponownym uruchomieniu programu i kliknięciu „Odśwież oferty”.
+
+[justjoin]
+# Kategorie z adresów justjoin.it, np. justjoin.it/job-offers/all-locations/python → "python".
+# Przykłady: ai, python, php, javascript, java, net, go, mobile, data, devops, testing,
+# security, analytics, pm, ux, admin, support, erp, architecture, game, c, ruby, scala, html, other
+categories = ["ai", "php", "python"]
+
+# Miasta z adresów justjoin.it, np. justjoin.it/job-offers/trojmiasto → "trojmiasto".
+# Przykłady: trojmiasto, warszawa, krakow, wroclaw, poznan, lodz, katowice, slask. Pusta lista = bez ofert stacjonarnych.
+cities = ["trojmiasto"]
+
+# Dołącz oferty w pełni zdalne z całego kraju.
+remote = true
+
+# Pomijaj oferty, których żadna lokalizacja nie leży w Polsce.
+only_poland = true
+
+# Poziomy doświadczenia: junior, mid, senior, c_level. Pusta lista = wszystkie.
+experience = []
+
+[filters]
+# Stanowisko musi zawierać przynajmniej jedno z tych słów (bez rozróżniania wielkości liter). Pusta lista = wszystkie.
+include_keywords = []
+
+# Pomijaj oferty, których stanowisko zawiera któreś z tych słów.
+exclude_keywords = []
+
+# Pomijaj firmy (porównanie bez „sp. z o.o.”, „Polska” itp.).
+exclude_companies = []
+
+[history]
+# Przeglądarki przeszukiwane przy imporcie historii: brave, chrome, edge, chromium, opera, vivaldi, firefox.
+browsers = ["brave", "chrome", "edge", "chromium", "opera", "vivaldi", "firefox"]
+
+# Dodatkowe katalogi z danymi przeglądarki, jeśli program sam ich nie znajdzie
+# (np. "C:/Users/Ja/AppData/Local/BraveSoftware/Brave-Browser/User Data").
+extra_paths = []
+
+[server]
+port = 8765
