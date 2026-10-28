@@ -59,13 +59,13 @@ def client(tmp_path, monkeypatch):
 
 def test_refresh_links_seed_application_and_warns_about_company(client):
     assert client.post("/api/refresh").json() == {"fetched": 2, "added": 2}
-    rows = {o["guid"]: o for o in client.get("/api/offers?view=aktywne").json()}
+    rows = {o["guid"]: o for o in client.get("/api/offers?view=aktywne").json()["offers"]}
     assert rows["g1"]["status"] == "aplikowalem"
     assert rows["g2"]["status"] == "nowa" and rows["g2"]["fresh"]
     assert rows["g2"]["company_history"][0]["title"] == "Senior Python AI Engineer"
     # drugie odświeżenie nie dodaje niczego nowego
     assert client.post("/api/refresh").json()["added"] == 0
-    assert not client.get("/api/offers?view=nowe").json()[0]["fresh"]
+    assert not client.get("/api/offers?view=nowe").json()["offers"][0]["fresh"]
 
 
 def test_status_applied_creates_and_undo_removes_application(client):
@@ -162,7 +162,7 @@ def test_refresh_drops_untouched_offers_that_disappear(client, monkeypatch):
         "category": "", "salary": "", "apply_url": "", "published_at": "",
     }])
     client.post("/api/refresh")
-    guids = {o["guid"] for o in client.get("/api/offers?view=wygasle").json()}
+    guids = {o["guid"] for o in client.get("/api/offers?view=wygasle").json()["offers"]}
     assert guids == {"g1", "g2"}  # g1 ma aplikację, g2 notatkę; nietknięte by zniknęły
 
 
@@ -196,3 +196,39 @@ def test_example_lists_every_category_and_city():
     text = config.EXAMPLE_PATH.read_text(encoding="utf-8")
     assert all(f'"{c}",' in text for c in CATEGORIES)
     assert all(f'"{c}",' in text for c in CITIES)
+
+
+def test_category_filter_and_sort(client):
+    client.post("/api/refresh")
+    d = client.get("/api/offers", params={"view": "aktywne", "category": "ai", "sort": "firma"}).json()
+    assert d["categories"] == {"ai": 2} and len(d["offers"]) == 2
+    assert client.get("/api/offers", params={"view": "aktywne", "category": "php"}).json()["offers"] == []
+    assert client.get("/api/offers", params={"sort": "drop table"}).status_code == 400
+
+
+def test_settings_roundtrip_keeps_commented_template(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "CONFIG_PATH", tmp_path / "config.toml")
+    body = {"categories": ["java", "go"], "cities": ["krakow"], "radius_km": 25, "remote": False, "only_poland": True,
+            "experience": ["senior"], "include_keywords": ["backend", " "], "exclude_keywords": ["intern"],
+            "exclude_companies": ['Firma "X"'], "port": 8765}
+    assert client.post("/api/settings", json=body).json()["restart_needed"] is False
+    text = (tmp_path / "config.toml").read_text(encoding="utf-8")
+    assert '  # "python",' in text and '  "java",' in text
+    cfg = config.load(tmp_path / "config.toml")
+    assert set(cfg.categories) == {"java", "go"}
+    assert cfg.cities == ["krakow"] and cfg.radius_km == 25 and not cfg.remote
+    assert cfg.include_keywords == ["backend"] and cfg.exclude_companies == ['Firma "X"']
+    assert client.get("/api/settings").json()["config"]["experience"] == ["senior"]
+    bad = client.post("/api/settings", json={**body, "categories": ["pyhton"]})
+    assert bad.status_code == 400 and "pyhton" in bad.json()["detail"]
+
+
+def test_example_config_is_rendered_from_defaults():
+    assert config.EXAMPLE_PATH.read_text(encoding="utf-8") == config.render(config.Config())
+
+
+def test_extension_zip_download(client):
+    import io, zipfile
+    r = client.get("/didIJJIT-extension.zip")
+    names = zipfile.ZipFile(io.BytesIO(r.content)).namelist()
+    assert "didIJJIT-extension/manifest.json" in names and "didIJJIT-extension/detect.js" in names

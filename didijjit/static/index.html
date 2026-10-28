@@ -54,6 +54,22 @@ form.add input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;f
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--g9);color:#fff;padding:10px 18px;border-radius:10px;display:none}
 h2{font:22px "DM Serif Display",serif;color:var(--g9);margin:8px 0}
 .hint{color:var(--muted);font-size:13.5px;margin:4px 0 12px}
+.tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
+.chip{font-size:13px;padding:4px 10px;border-radius:16px}
+.tools select{margin-left:auto;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px;background:#fff}
+.cat{display:inline-block;font-size:11.5px;font-weight:600;color:var(--g7);background:var(--mint);padding:1px 7px;border-radius:5px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.panel h3{margin:0 0 4px;font-size:16px;color:var(--g9)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 14px;margin-top:8px}
+.grid label,.row label{display:flex;gap:7px;align-items:center;font-size:14px;cursor:pointer}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.panel textarea,.panel input[type=number],.panel input[type=text]{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
+.panel textarea{width:100%;min-height:38px;resize:vertical}
+.ok{color:var(--g7);font-weight:700}.no{color:var(--red);font-weight:700}
+code.path{display:block;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;word-break:break-all;font-size:13px}
+ol li{margin:4px 0}
+.banner{background:#fdf3dc;border:1px solid #f0d69a;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center}
+.banner span{flex:1}
 @media(max-width:700px){.card{grid-template-columns:1fr}.actions{justify-content:flex-start}nav input{margin-left:0;width:100%}}
 </style>
 </head>
@@ -74,7 +90,13 @@ const TABS = [
   ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["wygasle", "Wygasłe"],
 ];
 const STATUS = [["przejrzana", "Przejrzana"], ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["nowa", "Nowa"]];
-let view = localStorage.getItem("view") || "nowe", query = "", summary = null;
+const store = {get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }};
+// adres z #zakładką (np. localhost:8765/#ustawienia) otwiera od razu tę zakładkę
+const VIEWS_ALL = ["nowe", "aktywne", "przejrzane", "aplikowalem", "nie_interesuje", "wygasle", "aplikacje", "historia", "ustawienia", "wtyczka"];
+let view = VIEWS_ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("view", "nowe"), query = "", summary = null, meta = null;
+let category = store.get("category", ""), sort = store.get("sort", "najnowsze");
+const extVersion = () => document.documentElement.dataset.didijjitExtension;
+const catLabel = (k) => meta?.categories?.[k] || k;
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -105,8 +127,10 @@ function renderNav() {
   $("#nav").innerHTML = TABS.map(([k, label]) => `<button data-v="${k}" class="${view === k ? "on" : ""}">${label}<span class="count">${c[k] ?? 0}</span></button>`).join("")
     + `<span class="sep"></span><button data-v="aplikacje" class="${view === "aplikacje" ? "on" : ""}">Moje aplikacje<span class="count">${summary?.applications ?? 0}</span></button>`
     + `<button data-v="historia" class="${view === "historia" ? "on" : ""}">Import z historii</button>`
-    + (["aplikacje", "historia"].includes(view) ? "" : `<input id="q" placeholder="Szukaj: stanowisko, firma, miasto" value="${esc(query)}">`);
-  document.querySelectorAll("#nav button").forEach((b) => b.onclick = () => { view = b.dataset.v; localStorage.setItem("view", view); renderNav(); render(); });
+    + `<span class="sep"></span><button data-v="ustawienia" class="${view === "ustawienia" ? "on" : ""}">⚙ Ustawienia</button>`
+    + `<button data-v="wtyczka" class="${view === "wtyczka" ? "on" : ""}">Wtyczka ${extVersion() ? "✓" : ""}</button>`
+    + (["aplikacje", "historia", "ustawienia", "wtyczka"].includes(view) ? "" : `<input id="q" placeholder="Szukaj: stanowisko, firma, miasto" value="${esc(query)}">`);
+  document.querySelectorAll("#nav button").forEach((b) => b.onclick = () => { view = b.dataset.v; store.set("view", view); history.replaceState(null, "", "#" + view); renderNav(); render(); });
   const q = $("#q");
   if (q) q.oninput = () => { query = q.value; clearTimeout(q._h); q._h = setTimeout(render, 250); };
 }
@@ -114,9 +138,25 @@ function renderNav() {
 async function render() {
   if (view === "aplikacje") return renderApplications();
   if (view === "historia") return renderHistory();
-  const rows = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}`);
-  if (!rows.length) { $("#view").innerHTML = `<div class="empty">Brak ofert w tym widoku.</div>`; return; }
-  $("#view").innerHTML = rows.map(cardHtml).join("");
+  if (view === "ustawienia") return renderSettings();
+  if (view === "wtyczka") return renderExtension();
+  const data = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${sort}`);
+  const rows = data.offers, cats = data.categories;
+  const total = Object.values(cats).reduce((a, b) => a + b, 0);
+  const banner = !extVersion() && store.get("hideExtBanner", "") !== "1"
+    ? `<div class="banner"><span>Zainstaluj wtyczkę do przeglądarki — na justjoin.it pokaże, czy już aplikowałeś do firmy.</span>
+       <button data-go="wtyczka">Jak zainstalować</button><button data-hide>Nie pokazuj</button></div>` : "";
+  const tools = `<div class="tools">
+    <button class="chip ${category ? "" : "on"}" data-cat="">Wszystkie kategorie<span class="count">${total}</span></button>
+    ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip ${category === k ? "on" : ""}" data-cat="${esc(k)}">${esc(catLabel(k))}<span class="count">${n}</span></button>`).join("")}
+    <select id="sort" title="Sortowanie">
+      ${[["najnowsze", "Najnowsze"], ["kategoria", "Wg kategorii"], ["firma", "Wg firmy"], ["miasto", "Wg miasta"]].map(([k, l]) => `<option value="${k}" ${sort === k ? "selected" : ""}>${l}</option>`).join("")}
+    </select></div>`;
+  $("#view").innerHTML = banner + tools + (rows.length ? rows.map(cardHtml).join("") : `<div class="empty">Brak ofert w tym widoku.</div>`);
+  document.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { category = b.dataset.cat; store.set("category", category); render(); });
+  $("#sort").onchange = (e) => { sort = e.target.value; store.set("sort", sort); render(); };
+  document.querySelector("[data-go]")?.addEventListener("click", () => { view = "wtyczka"; store.set("view", view); renderNav(); render(); });
+  document.querySelector("[data-hide]")?.addEventListener("click", () => { store.set("hideExtBanner", "1"); render(); });
   document.querySelectorAll("[data-st]").forEach((b) => b.onclick = () => setStatus(b.closest(".card").dataset.g, b.dataset.st));
   document.querySelectorAll(".note input").forEach((i) => i.onchange = () => api(`/api/offers/${i.closest(".card").dataset.g}/note`, {method: "POST", body: {note: i.value}}).then(() => toast("Notatka zapisana")));
 }
@@ -129,7 +169,7 @@ function cardHtml(o) {
       <a class="title" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>
       ${isNew ? `<span class="badge b-new">${o.fresh ? "Nowa" : "Nieprzejrzana"}</span>` : ""}
       ${o.status === "aplikowalem" ? `<span class="badge b-app">Aplikowałem ${day(o.status_at)}</span>` : ""}
-      <div class="sub"><b>${esc(o.company)}</b> · ${esc(o.city)} · ${esc(o.workplace)} · ${esc(o.experience)} · ${esc(o.category)}</div>
+      <div class="sub"><span class="cat">${esc(catLabel(o.category))}</span> <b>${esc(o.company)}</b> · ${esc(o.city)} · ${esc(o.workplace)} · ${esc(o.experience)}</div>
       <div class="sub">${o.salary ? esc(o.salary) + " · " : ""}opublikowana ${fmt(o.published_at)}</div>
     </div>
     <div class="actions">
@@ -220,6 +260,77 @@ async function renderHistory() {
   };
 }
 
+async function renderSettings() {
+  const d = await api("/api/settings");
+  const c = d.config;
+  const box = (name, k, label, on) => `<label><input type="checkbox" name="${name}" value="${esc(k)}" ${on ? "checked" : ""}>${esc(label)}</label>`;
+  const small = Object.keys(d.cities).filter((k) => !d.big_cities.includes(k));
+  $("#view").innerHTML = `<h2>Ustawienia</h2>
+    <p class="hint">Zapisywane do pliku <b>config.toml</b> w folderze programu (można go też edytować ręcznie). Po zapisaniu kliknij „Odśwież oferty”.</p>
+    <form id="settings">
+    <div class="panel"><h3>Kategorie</h3>
+      <div class="grid">${Object.entries(d.categories).map(([k, l]) => box("categories", k, l, c.categories.includes(k))).join("")}</div></div>
+    <div class="panel"><h3>Miasta</h3><p class="hint">Oferty stacjonarne i hybrydowe z tych miejsc.</p>
+      <div class="grid">${d.big_cities.map((k) => box("cities", k, d.cities[k], c.cities.includes(k))).join("")}</div>
+      <details ${small.some((k) => c.cities.includes(k)) ? "open" : ""}><summary style="margin-top:10px">Mniejsze miasta</summary>
+      <div class="grid">${small.map((k) => box("cities", k, d.cities[k], c.cities.includes(k))).join("")}</div></details>
+      <div class="row"><label>Promień: <input type="number" name="radius_km" min="0" max="500" value="${c.radius_km}" style="width:80px"> km</label>
+        <span class="hint" style="margin:0">0 = tylko same miasta. Promień łapie też oferty z „Gdansk” bez polskich znaków.</span></div></div>
+    <div class="panel"><h3>Tryb pracy i doświadczenie</h3>
+      <div class="row">${box("remote", "1", "Praca w pełni zdalna z całej Polski", c.remote)}${box("only_poland", "1", "Tylko oferty z Polski", c.only_poland)}</div>
+      <div class="row">${Object.entries(d.experience).map(([k, l]) => box("experience", k, l, c.experience.includes(k))).join("")}
+        <span class="hint" style="margin:0">nic nie zaznaczone = wszystkie poziomy</span></div></div>
+    <div class="panel"><h3>Filtry</h3><p class="hint">Słowa i firmy oddzielaj przecinkami.</p>
+      <label>Stanowisko musi zawierać jedno z:<textarea name="include_keywords" placeholder="np. backend, developer">${esc(c.include_keywords.join(", "))}</textarea></label>
+      <label>Pomijaj stanowiska ze słowami:<textarea name="exclude_keywords" placeholder="np. intern, staż, lead">${esc(c.exclude_keywords.join(", "))}</textarea></label>
+      <label>Pomijaj firmy:<textarea name="exclude_companies" placeholder="np. Firma A, Firma B">${esc(c.exclude_companies.join(", "))}</textarea></label></div>
+    <div class="panel"><h3>Zaawansowane</h3>
+      <div class="row"><label>Port programu: <input type="number" name="port" min="1024" max="65535" value="${c.port}" style="width:100px"></label>
+      <span class="hint" style="margin:0">zmiana wymaga ponownego uruchomienia programu i ustawienia tego samego portu w opcjach wtyczki</span></div></div>
+    <p><button class="primary">Zapisz ustawienia</button></p></form>`;
+  $("#settings").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const all = (n) => [...f.querySelectorAll(`[name=${n}]:checked`)].map((i) => i.value);
+    const words = (n) => f.querySelector(`[name=${n}]`).value.split(",").map((x) => x.trim()).filter(Boolean);
+    const body = {
+      categories: all("categories"), cities: all("cities"), experience: all("experience"),
+      radius_km: Number(f.radius_km.value) || 0, remote: f.querySelector("[name=remote]").checked,
+      only_poland: f.querySelector("[name=only_poland]").checked, port: Number(f.port.value) || 8765,
+      include_keywords: words("include_keywords"), exclude_keywords: words("exclude_keywords"), exclude_companies: words("exclude_companies"),
+    };
+    try {
+      const r = await api("/api/settings", {method: "POST", body});
+      toast(r.restart_needed ? "Zapisano. Uruchom program ponownie, żeby zmienić port." : "Zapisano — teraz kliknij „Odśwież oferty”.");
+      await loadSummary();
+    } catch (err) { toast(err.message); }
+  };
+}
+
+async function renderExtension() {
+  const d = await api("/api/extension");
+  const v = extVersion();
+  const browsers = [["Brave", "brave://extensions"], ["Chrome", "chrome://extensions"], ["Edge", "edge://extensions"], ["Opera", "opera://extensions"], ["Vivaldi", "vivaldi://extensions"]];
+  $("#view").innerHTML = `<h2>Wtyczka do przeglądarki</h2>
+    <div class="panel">${v ? `<span class="ok">✓ Wtyczka działa w tej przeglądarce (wersja ${esc(v)})</span>${v !== d.version ? ` — dostępna nowsza wersja ${esc(d.version)}: przeładuj ją na stronie rozszerzeń.` : ""}`
+      : `<span class="no">Wtyczka nie jest zainstalowana w tej przeglądarce.</span>`}
+      <p class="hint" style="margin-bottom:0">Na stronie oferty justjoin.it wtyczka pokazuje pasek: zielony — już aplikowałeś na tę ofertę, żółty — aplikowałeś do tej firmy na inne stanowisko.
+      Po kliknięciu „Aplikuj / Apply” zapyta, czy zapisać aplikację. Działa, gdy program didIJJIT jest uruchomiony.</p></div>
+    <div class="panel"><h3>Brave, Chrome, Edge, Opera, Vivaldi</h3><ol>
+      <li>Otwórz stronę rozszerzeń (wklej adres w pasek przeglądarki): ${browsers.map(([n, u]) => `${n} <code>${u}</code>`).join(", ")}.</li>
+      <li>Włącz <b>Tryb dewelopera</b> (Developer mode).</li>
+      <li>Kliknij <b>Załaduj rozpakowane</b> (Load unpacked) i wskaż folder:
+        <code class="path" id="extpath">${esc(d.path)}</code><button id="copy">Kopiuj ścieżkę</button></li>
+      <li>Wróć tutaj i odśwież stronę — przy zakładce „Wtyczka” pojawi się ✓.</li></ol></div>
+    <div class="panel"><h3>Firefox (121+)</h3><ol>
+      <li>Otwórz <code>about:debugging#/runtime/this-firefox</code> → <b>Załaduj tymczasowy dodatek</b> → wskaż plik <code>manifest.json</code> w folderze powyżej.</li>
+      <li>W <code>about:addons</code> → didIJJIT → <b>Uprawnienia</b> zezwól na justjoin.it i localhost.</li>
+      <li>Firefox usuwa tymczasowe dodatki po zamknięciu przeglądarki.</li></ol></div>
+    <div class="panel"><h3>Inny komputer?</h3><p class="hint" style="margin:0">Pobierz wtyczkę jako ZIP, rozpakuj i wskaż rozpakowany folder:
+      <a href="/didIJJIT-extension.zip">didIJJIT-extension-${esc(d.version)}.zip</a></p></div>`;
+  $("#copy").onclick = () => navigator.clipboard.writeText(d.path).then(() => toast("Skopiowano ścieżkę"), () => toast("Zaznacz ścieżkę i skopiuj ręcznie"));
+}
+
 $("#refresh").onclick = async () => {
   const b = $("#refresh"); b.disabled = true; b.textContent = "Pobieram…";
   try { const r = await api("/api/refresh", {method: "POST"}); toast(`Pobrano ${r.fetched} ofert, nowych: ${r.added}`); }
@@ -228,7 +339,7 @@ $("#refresh").onclick = async () => {
   await loadSummary(); render();
 };
 
-loadSummary().then(render);
+api("/api/settings").then((d) => { meta = d; }).catch(() => {}).finally(() => loadSummary().then(render));
 </script>
 </body>
 </html>

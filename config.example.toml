@@ -1,5 +1,6 @@
 # didIJJIT — ustawienia. Program przy pierwszym starcie kopiuje ten plik jako config.toml.
-# Zmiany działają po ponownym uruchomieniu programu i kliknięciu „Odśwież oferty”.
+# Najprościej zmieniać je w programie: zakładka „Ustawienia”. Można też edytować ten plik ręcznie —
+# wtedy kliknij „Odśwież oferty” (port zmienia się dopiero po ponownym uruchomieniu programu).
 #
 # JAK WYBIERAĆ: w listach poniżej usuń „#” przed pozycją, żeby ją włączyć,
 # albo dopisz „#” na początku, żeby wyłączyć. Przecinki zostaw, jak są.
@@ -90,8 +91,8 @@ cities = [
 
 # Promień w km wokół wybranych miast, np. 30 = także Pruszcz, Rumia czy Wejherowo dla Trójmiasta.
 # 0 = tylko oferty przypisane do samych miast. Promień łapie też oferty z nazwą miasta wpisaną
-# bez polskich znaków (np. „Gdansk”), które justjoin.it pomija przy wyszukiwaniu po mieście — warto ustawić choćby 10. Przy promieniu odświeżanie trwa dłużej,
-# bo program pobiera oferty z całej Polski i sam liczy odległość.
+# bez polskich znaków (np. „Gdansk”), które justjoin.it pomija przy wyszukiwaniu po mieście — warto ustawić choćby 10.
+# Przy promieniu odświeżanie trwa dłużej, bo program pobiera oferty z całej Polski i sam liczy odległość.
 radius_km = 0
 
 # Dołącz oferty w pełni zdalne z całego kraju (true = tak, false = nie).
@@ -102,10 +103,10 @@ only_poland = true
 
 # Poziom doświadczenia. Pusta lista = wszystkie.
 experience = [
-  # "junior",
-  # "mid",
-  # "senior",
-  # "c_level",
+  # "junior",             # Junior
+  # "mid",                # Mid
+  # "senior",             # Senior
+  # "c_level",            # C-level
 ]
 
 [filters]
@@ -122,7 +123,7 @@ exclude_keywords = []
 exclude_companies = []
 
 [history]
-# Przeglądarki przeszukiwane przy imporcie historii.
+# Przeglądarki przeszukiwane przy imporcie historii: brave, chrome, edge, chromium, opera, vivaldi, firefox.
 browsers = ["brave", "chrome", "edge", "chromium", "opera", "vivaldi", "firefox"]
 
 # Dodatkowe katalogi z danymi przeglądarki, jeśli program sam ich nie znajdzie

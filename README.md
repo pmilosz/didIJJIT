@@ -43,7 +43,12 @@ Zatrzymanie: zamknij okno albo naciśnij `Ctrl+C`.
 
 ## 2. Ustawienia — jakie oferty Cię interesują
 
-Przy pierwszym uruchomieniu powstaje plik **`config.toml`** (kopia `config.example.toml`). Otwórz go w Notatniku lub innym edytorze.
+Najprościej w programie: zakładka **⚙ Ustawienia** (albo adres `http://localhost:8765/#ustawienia`).
+Zaznaczasz kategorie, miasta, promień, pracę zdalną, poziom doświadczenia i filtry, klikasz **Zapisz**, a potem **Odśwież oferty**.
+
+![Ustawienia](docs/ustawienia.png)
+
+Wszystko trafia do pliku **`config.toml`**, który można też edytować ręcznie. Przy pierwszym uruchomieniu powstaje on jako kopia `config.example.toml`. Otwórz go w Notatniku lub innym edytorze.
 Są w nim **wszystkie kategorie justjoin.it i wszystkie miasta**. Nic nie trzeba szukać, wystarczy włączyć lub wyłączyć `#` na początku linii:
 
 ```toml
@@ -89,6 +94,7 @@ Oferty, które przestały pasować, znikną, chyba że nadałeś im status albo 
 | **Moje aplikacje** | wszystkie miejsca, do których wysłałeś CV, także spoza justjoin.it (można dopisać ręcznie) |
 | **Import z historii** | propozycje aplikacji odczytane z historii przeglądarek |
 
+Nad listą są **filtry kategorii** z liczbą ofert (np. „Python 301”) i **sortowanie**: najnowsze, wg kategorii, firmy albo miasta.
 Przy każdej ofercie możesz zmienić status i dopisać notatkę.
 Gdy oznaczysz „Aplikowałem”, program zapyta o datę. Od tej chwili każda oferta tej firmy pokaże ostrzeżenie
 „Już aplikowałeś do tej firmy” (nazwy porównywane są bez „sp. z o.o.”, „S.A.”, „Polska” itp.).
@@ -109,6 +115,9 @@ Jeśli Twojej przeglądarki nie ma na liście, dopisz jej katalog danych w `conf
 ## 4. Wtyczka do przeglądarki
 
 Wtyczka jest w folderze **`extension/`**. Działa tylko wtedy, gdy program didIJJIT jest uruchomiony.
+
+Zakładka **Wtyczka** w programie pokazuje, czy wtyczka jest już zainstalowana w przeglądarce (✓), podaje gotową ścieżkę
+do folderu z przyciskiem „Kopiuj” i pozwala pobrać wtyczkę jako ZIP — instrukcja poniżej jest tam krok po kroku.
 
 **Brave, Chrome, Edge, Opera, Vivaldi** (wszystkie oparte na Chromium):
 
@@ -147,8 +156,9 @@ Przy `git clone` wystarczy `git pull`. Wtyczkę przeładuj na stronie rozszerze�
 ## Dla programistów
 
 ```bash
-./run.sh                          # tworzy .venv i uruchamia program
-.venv/bin/python -m pytest -q     # testy
+./run.sh                                          # tworzy .venv i uruchamia program
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q                     # testy
 ```
 
 Budowa: FastAPI + SQLite + jedna strona HTML bez frameworka (`didijjit/static/index.html`); wtyczka w Manifest V3,

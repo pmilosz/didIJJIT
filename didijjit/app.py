@@ -6,12 +6,26 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
+import io
+import json
+import os
+import platform
+import zipfile
+
 from . import config, db, history, jjit
+from .places import CATEGORIES, CITIES
 
 STATIC = Path(__file__).resolve().parent / "static"
+EXTENSION = Path(__file__).resolve().parent.parent / "extension"
+SORTS = {
+    "najnowsze": "published_at desc",
+    "kategoria": "category, published_at desc",
+    "firma": "lower(company), published_at desc",
+    "miasto": "city, published_at desc",
+}
 Status = Literal["nowa", "przejrzana", "aplikowalem", "nie_interesuje"]
 VIEWS = {
     "nowe": "active = 1 and status = 'nowa'",
@@ -128,9 +142,9 @@ def refresh():
 
 
 @app.get("/api/offers")
-def offers(view: str = "nowe", q: str = ""):
-    if view not in VIEWS:
-        raise HTTPException(400, "Nieznany widok")
+def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "najnowsze"):
+    if view not in VIEWS or sort not in SORTS:
+        raise HTTPException(400, "Nieznany widok albo sortowanie")
     with db.session() as conn:
         last = conn.execute("select max(id) from refreshes").fetchone()[0]
         sql = f"select * from offers where {VIEWS[view]}"
@@ -138,7 +152,12 @@ def offers(view: str = "nowe", q: str = ""):
         if q.strip():
             sql += " and (title like ? or company like ? or city like ?)"
             args += [f"%{q.strip()}%"] * 3
-        sql += " order by published_at desc"
+        # liczniki kategorii liczymy przed zawężeniem do jednej kategorii, żeby zakładki nie znikały
+        cats = {r[0]: r[1] for r in conn.execute(f"select category, count(*) from ({sql}) group by category", args)}
+        if category:
+            sql += " and category = ?"
+            args.append(category)
+        sql += f" order by {SORTS[sort]}"
         rows = [dict(r) for r in conn.execute(sql, args)]
         history: dict[str, list[dict]] = {}
         for a in conn.execute("select * from applications order by applied_at desc"):
@@ -147,7 +166,7 @@ def offers(view: str = "nowe", q: str = ""):
         r["fresh"] = r["first_seen_refresh"] == last
         r["url"] = jjit.OFFER_URL.format(slug=r["slug"])
         r["company_history"] = [a for a in history.get(r["company_key"], []) if a["offer_guid"] != r["guid"]]
-    return rows
+    return {"offers": rows, "categories": cats}
 
 
 class StatusIn(BaseModel):
@@ -323,3 +342,85 @@ def applied_from_page(body: PageApplyIn):
         ))
         _link_applications(conn)
     return {"ok": True}
+
+
+@app.get("/api/settings")
+def get_settings():
+    cfg = config.load()
+    return {
+        "config": {k: getattr(cfg, k) for k in config.Config.__dataclass_fields__ if k != "source"},
+        "source": cfg.source,
+        "categories": CATEGORIES,
+        "cities": {k: v[0] for k, v in CITIES.items()},
+        "big_cities": config.BIG_CITIES,
+        "experience": config.EXPERIENCE,
+    }
+
+
+class SettingsIn(BaseModel):
+    categories: list[str]
+    cities: list[str] = []
+    radius_km: int = 0
+    remote: bool = True
+    only_poland: bool = True
+    experience: list[str] = []
+    include_keywords: list[str] = []
+    exclude_keywords: list[str] = []
+    exclude_companies: list[str] = []
+    port: int = 8765
+
+
+@app.post("/api/settings")
+def save_settings(body: SettingsIn):
+    """Zapis ustawień z przeglądarki do config.toml (z zachowaniem komentarzy i pełnych list do odznaczania)."""
+    current = config.load()
+    clean = lambda xs: [x.strip() for x in xs if x.strip()]
+    cfg = config.Config(
+        categories=body.categories, cities=body.cities, radius_km=max(0, min(body.radius_km, 500)),
+        remote=body.remote, only_poland=body.only_poland,
+        experience=[e for e in body.experience if e in config.EXPERIENCE],
+        include_keywords=clean(body.include_keywords), exclude_keywords=clean(body.exclude_keywords),
+        exclude_companies=clean(body.exclude_companies),
+        browsers=current.browsers, extra_paths=current.extra_paths, port=body.port,
+    )
+    try:
+        jjit.validate(cfg)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if not 1024 <= cfg.port <= 65535:
+        raise HTTPException(400, "Port musi być liczbą od 1024 do 65535")
+    if not cfg.cities and not cfg.remote:
+        raise HTTPException(400, "Wybierz co najmniej jedno miasto albo pracę zdalną")
+    config.save(cfg)
+    return {"ok": True, "restart_needed": cfg.port != current.port}
+
+
+def _extension_version() -> str:
+    return json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))["version"]
+
+
+def _browser_path(path: Path) -> str:
+    """Ścieżka do wskazania w oknie przeglądarki — pod WSL przeglądarka działa w Windows."""
+    if "microsoft" not in platform.release().lower():
+        return str(path)
+    p = str(path)
+    if p.startswith("/mnt/") and len(p) > 6:
+        return f"{p[5].upper()}:\\" + p[7:].replace("/", "\\")
+    return f"\\\\wsl.localhost\\{os.environ.get('WSL_DISTRO_NAME', 'Ubuntu')}" + p.replace("/", "\\")
+
+
+@app.get("/api/extension")
+def extension_info():
+    return {"path": _browser_path(EXTENSION), "version": _extension_version()}
+
+
+@app.get("/didIJJIT-extension.zip")
+def extension_zip():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(EXTENSION.iterdir()):
+            if f.is_file():
+                z.write(f, f"didIJJIT-extension/{f.name}")
+    name = f"didIJJIT-extension-{_extension_version()}.zip"
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
