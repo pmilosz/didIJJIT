@@ -175,6 +175,8 @@ wspólna dla Chromium i Firefoksa. Zmienne środowiskowe: `DIDIJJIT_DB`, `DIDIJJ
 
 Zgłoszenia błędów i propozycje — przez Issues.
 
+⭐ **Jeśli program Ci pomógł, zostaw gwiazdkę na GitHubie** — dzięki temu łatwiej trafi do innych szukających pracy.
+
 ## Licencja
 
 MIT — zobacz [LICENSE](LICENSE).
