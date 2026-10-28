@@ -232,3 +232,15 @@ def test_extension_zip_download(client):
     r = client.get("/didIJJIT-extension.zip")
     names = zipfile.ZipFile(io.BytesIO(r.content)).namelist()
     assert "didIJJIT-extension/manifest.json" in names and "didIJJIT-extension/detect.js" in names
+
+
+def test_toggle_category_updates_config(client, tmp_path, monkeypatch):
+    path = tmp_path / "config.toml"
+    monkeypatch.setattr(config, "CONFIG_PATH", path)
+    config.save(config.Config(categories=["python"]), path)
+    assert client.post("/api/categories/toggle", json={"category": "java"}).json() == {
+        "categories": ["java", "python"], "enabled": True}
+    assert client.post("/api/categories/toggle", json={"category": "java"}).json()["enabled"] is False
+    assert config.load(path).categories == ["python"]
+    assert client.post("/api/categories/toggle", json={"category": "python"}).status_code == 400  # ostatnia
+    assert client.post("/api/categories/toggle", json={"category": "pyhton"}).status_code == 400

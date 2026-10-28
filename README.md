@@ -94,7 +94,11 @@ Oferty, które przestały pasować, znikną, chyba że nadałeś im status albo 
 | **Moje aplikacje** | wszystkie miejsca, do których wysłałeś CV, także spoza justjoin.it (można dopisać ręcznie) |
 | **Import z historii** | propozycje aplikacji odczytane z historii przeglądarek |
 
-Nad listą są **filtry kategorii** z liczbą ofert (np. „Python 301”) i **sortowanie**: najnowsze, wg kategorii, firmy albo miasta.
+Nad listą są dwa rzędy guzików:
+
+- **Pobieraj** — wszystkie kategorie justjoin.it; włączone są podświetlone z ✓. Kliknięcie włącza lub wyłącza kategorię
+  i od razu pobiera oferty, bez wchodzenia w Ustawienia.
+- **Pokaż** — filtr listy po kategorii z liczbą ofert (np. „Python 301”), obok **sortowanie**: najnowsze, wg kategorii, firmy albo miasta.
 Przy każdej ofercie możesz zmienić status i dopisać notatkę.
 Gdy oznaczysz „Aplikowałem”, program zapyta o datę. Od tej chwili każda oferta tej firmy pokaże ostrzeżenie
 „Już aplikowałeś do tej firmy” (nazwy porównywane są bez „sp. z o.o.”, „S.A.”, „Polska” itp.).

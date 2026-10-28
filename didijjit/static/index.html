@@ -57,6 +57,9 @@ h2{font:22px "DM Serif Display",serif;color:var(--g9);margin:8px 0}
 .tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
 .chip{font-size:13px;padding:4px 10px;border-radius:16px}
 .tools select{margin-left:auto;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px;background:#fff}
+.tools .lbl{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:62px}
+.chip.pick{border-style:dashed;color:var(--muted)}
+.chip.pick.sel{border-style:solid;background:var(--mint);border-color:var(--g5);color:var(--g9);font-weight:600}
 .cat{display:inline-block;font-size:11.5px;font-weight:600;color:var(--g7);background:var(--mint);padding:1px 7px;border-radius:5px}
 .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
 .panel h3{margin:0 0 4px;font-size:16px;color:var(--g9)}
@@ -158,7 +161,11 @@ async function render() {
   const banner = !extVersion() && store.get("hideExtBanner", "") !== "1"
     ? `<div class="banner"><span>Zainstaluj wtyczkę do przeglądarki — na justjoin.it pokaże, czy już aplikowałeś do firmy.</span>
        <button data-go="wtyczka">Jak zainstalować</button><button data-hide>Nie pokazuj</button></div>` : "";
-  const tools = `<div class="tools">
+  const enabled = summary?.config?.categories || [];
+  const picker = meta ? `<div class="tools"><span class="lbl" title="Kategorie pobierane z justjoin.it — kliknij, żeby włączyć lub wyłączyć">Pobieraj:</span>
+    ${Object.entries(meta.categories).map(([k, l]) => `<button class="chip pick ${enabled.includes(k) ? "sel" : ""}" data-toggle="${esc(k)}"
+      title="${enabled.includes(k) ? "Kliknij, żeby przestać pobierać" : "Kliknij, żeby pobierać"} oferty z kategorii ${esc(l)}">${enabled.includes(k) ? "✓ " : ""}${esc(l)}</button>`).join("")}</div>` : "";
+  const tools = picker + `<div class="tools"><span class="lbl">Pokaż:</span>
     <button class="chip ${category ? "" : "on"}" data-cat="">Wszystkie kategorie<span class="count">${total}</span></button>
     ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip ${category === k ? "on" : ""}" data-cat="${esc(k)}">${esc(catLabel(k))}<span class="count">${n}</span></button>`).join("")}
     <select id="sort" title="Sortowanie">
@@ -166,6 +173,7 @@ async function render() {
     </select></div>`;
   $("#view").innerHTML = banner + tools + (rows.length ? rows.map(cardHtml).join("") : `<div class="empty">Brak ofert w tym widoku.</div>`);
   document.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { category = b.dataset.cat; store.set("category", category); render(); });
+  document.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => toggleCategory(b.dataset.toggle));
   $("#sort").onchange = (e) => { sort = e.target.value; store.set("sort", sort); render(); };
   document.querySelector("[data-go]")?.addEventListener("click", () => { view = "wtyczka"; store.set("view", view); renderNav(); render(); });
   document.querySelector("[data-hide]")?.addEventListener("click", () => { store.set("hideExtBanner", "1"); render(); });
@@ -343,7 +351,16 @@ async function renderExtension() {
   $("#copy").onclick = () => navigator.clipboard.writeText(d.path).then(() => toast("Skopiowano ścieżkę"), () => toast("Zaznacz ścieżkę i skopiuj ręcznie"));
 }
 
-$("#refresh").onclick = async () => {
+async function toggleCategory(key) {
+  try {
+    const r = await api("/api/categories/toggle", {method: "POST", body: {category: key}});
+    toast(`${r.enabled ? "Włączono" : "Wyłączono"}: ${catLabel(key)} — pobieram oferty…`);
+    if (!r.enabled && category === key) { category = ""; store.set("category", ""); }
+  } catch (e) { return toast(e.message); }
+  await doRefresh();
+}
+
+async function doRefresh() {
   const b = $("#refresh"), box = $("#loading"), t0 = Date.now();
   b.disabled = true; b.innerHTML = `<span class="spin"></span> Pobieram…`;
   box.classList.add("on");
@@ -357,7 +374,8 @@ $("#refresh").onclick = async () => {
   clearInterval(tick); box.classList.remove("on"); $("#loading-time").textContent = "0 s";
   b.disabled = false; b.textContent = "Odśwież oferty";
   await loadSummary(); render();
-};
+}
+$("#refresh").onclick = doRefresh;
 
 api("/api/settings").then((d) => { meta = d; }).catch(() => {}).finally(() => loadSummary().then(render));
 </script>

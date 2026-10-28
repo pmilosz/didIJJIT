@@ -395,6 +395,24 @@ def save_settings(body: SettingsIn):
     return {"ok": True, "restart_needed": cfg.port != current.port}
 
 
+class ToggleIn(BaseModel):
+    category: str
+
+
+@app.post("/api/categories/toggle")
+def toggle_category(body: ToggleIn):
+    """Szybkie włączanie/wyłączanie kategorii z listy ofert (zapis do config.toml)."""
+    if body.category not in CATEGORIES:
+        raise HTTPException(400, "Nieznana kategoria")
+    cfg = config.load()
+    chosen = set(cfg.categories) ^ {body.category}
+    if not chosen:
+        raise HTTPException(400, "Musi zostać włączona co najmniej jedna kategoria")
+    cfg.categories = [c for c in CATEGORIES if c in chosen]
+    config.save(cfg)
+    return {"categories": cfg.categories, "enabled": body.category in chosen}
+
+
 def _extension_version() -> str:
     return json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))["version"]
 
