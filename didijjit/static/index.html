@@ -552,9 +552,10 @@ async function renderExtension() {
       Po kliknięciu „Aplikuj / Apply” zapyta, czy zapisać aplikację. Działa, gdy program didIJJIT jest uruchomiony.</p></div>
     <div class="surface panel"><h3>Brave, Chrome, Edge, Opera, Vivaldi</h3><ol>
       <li>Otwórz stronę rozszerzeń (wklej adres w pasek przeglądarki): ${browsers.map(([n, u]) => `${n} <code>${u}</code>`).join(", ")}.</li>
-      <li>Włącz <b>Tryb dewelopera</b> (Developer mode).</li>
+      <li>Włącz przełącznik <b>Tryb dewelopera</b> (Developer mode) w <b>prawym górnym rogu</b> strony rozszerzeń. Dopiero wtedy pojawią się przyciski.</li>
       <li>Kliknij <b>Załaduj rozpakowane</b> (Load unpacked) i wskaż folder:
-        <code class="path">${esc(d.path)}</code><button class="btn" id="copy">Kopiuj ścieżkę</button></li>
+        <code class="path">${esc(d.path)}</code><button class="btn" id="copy">Kopiuj ścieżkę</button>
+        <div class="hint">Najprościej wkleić ścieżkę w pasek adresu okna wyboru folderu. W tym oknie folder wygląda na pusty, bo widać w nim tylko podfoldery, a nie pliki. To normalne: kliknij <b>Wybierz folder</b>.</div></li>
       <li>Wróć tutaj i odśwież stronę — przy zakładce „Wtyczka” pojawi się ✓.</li></ol></div>
     <div class="surface panel"><h3>Firefox (121+)</h3><ol>
       <li>Otwórz <code>about:debugging#/runtime/this-firefox</code> → <b>Załaduj tymczasowy dodatek</b> → wskaż plik <code>manifest.json</code> w folderze powyżej.</li>

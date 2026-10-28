@@ -131,8 +131,9 @@ do folderu z przyciskiem „Kopiuj” i pozwala pobrać wtyczkę jako ZIP — in
 **Brave, Chrome, Edge, Opera, Vivaldi** (wszystkie oparte na Chromium):
 
 1. Wejdź na stronę rozszerzeń: `brave://extensions`, `chrome://extensions`, `edge://extensions`, `opera://extensions` lub `vivaldi://extensions`.
-2. Włącz **Tryb dewelopera** (Developer mode).
+2. Włącz przełącznik **Tryb dewelopera** (Developer mode) w prawym górnym rogu. Dopiero wtedy pojawi się przycisk z kroku 3.
 3. Kliknij **Załaduj rozpakowane** (Load unpacked) i wskaż folder `extension`.
+   W oknie wyboru folder wygląda na pusty, bo widać w nim tylko podfoldery, a nie pliki. To normalne: kliknij **Wybierz folder**.
 
 **Firefox** (wersja 121 lub nowsza):
 
