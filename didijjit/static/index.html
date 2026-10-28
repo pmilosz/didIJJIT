@@ -70,6 +70,13 @@ code.path{display:block;background:var(--cream);border:1px solid var(--line);bor
 ol li{margin:4px 0}
 .banner{background:#fdf3dc;border:1px solid #f0d69a;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center}
 .banner span{flex:1}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px}
+.spin.big{width:42px;height:42px;border-width:5px;color:var(--g5)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{position:fixed;inset:0;background:rgba(248,246,240,.82);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;color:var(--g9);font-size:16px}
+.loading.on{display:flex}
+.loading small{color:var(--muted);font-size:13.5px}
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
 @media(max-width:700px){.card{grid-template-columns:1fr}.actions{justify-content:flex-start}nav input{margin-left:0;width:100%}}
 </style>
 </head>
@@ -84,6 +91,11 @@ ol li{margin:4px 0}
   <section id="view"></section>
 </main>
 <div class="toast" id="toast"></div>
+<div class="loading" id="loading" role="status" aria-live="polite">
+  <span class="spin big"></span>
+  <b>Pobieram oferty z justjoin.it…</b>
+  <small id="loading-time">0 s</small>
+</div>
 <script>
 const TABS = [
   ["nowe", "Nowe"], ["aktywne", "Wszystkie"], ["przejrzane", "Przejrzane"],
@@ -332,9 +344,17 @@ async function renderExtension() {
 }
 
 $("#refresh").onclick = async () => {
-  const b = $("#refresh"); b.disabled = true; b.textContent = "Pobieram…";
+  const b = $("#refresh"), box = $("#loading"), t0 = Date.now();
+  b.disabled = true; b.innerHTML = `<span class="spin"></span> Pobieram…`;
+  box.classList.add("on");
+  // licznik sekund — przy promieniu pobieranie całej Polski trwa dłużej, więc widać, że coś się dzieje
+  const tick = setInterval(() => {
+    const sec = Math.round((Date.now() - t0) / 1000);
+    $("#loading-time").textContent = `${sec} s` + (sec > 8 ? " · przy dużym promieniu lub wielu kategoriach to może chwilę potrwać" : "");
+  }, 500);
   try { const r = await api("/api/refresh", {method: "POST"}); toast(`Pobrano ${r.fetched} ofert, nowych: ${r.added}`); }
   catch (e) { toast(e.message); }
+  clearInterval(tick); box.classList.remove("on"); $("#loading-time").textContent = "0 s";
   b.disabled = false; b.textContent = "Odśwież oferty";
   await loadSummary(); render();
 };
