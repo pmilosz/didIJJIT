@@ -85,10 +85,16 @@ def summary():
         counts = {k: conn.execute(f"select count(*) from offers where {w}").fetchone()[0] for k, w in VIEWS.items()}
         last = conn.execute("select * from refreshes order by id desc limit 1").fetchone()
         apps = conn.execute("select count(*) from applications").fetchone()[0]
+        # aktywne oferty firm, do których już wysłano CV (bez ofert, na które aplikowano)
+        warnings = conn.execute(
+            "select count(*) from offers where active = 1 and status != 'aplikowalem' "
+            "and company_key in (select company_key from applications)"
+        ).fetchone()[0]
     cfg = config.load()
     return {
         "counts": counts,
         "applications": apps,
+        "warnings": warnings,
         "last_refresh": dict(last) if last else None,
         "config": {"source": cfg.source, "categories": cfg.categories, "cities": cfg.cities, "radius_km": cfg.radius_km,
                    "remote": cfg.remote},

@@ -15,6 +15,11 @@ Program łączy się tylko z justjoin.it, żeby pobrać listę ofert.
 
 ![Lista ofert](docs/screenshot.png)
 
+Do wyboru są **4 motywy wyglądu**: Dashboard (jasny), Aurora (ciemny), Brutal (kolorowy) i Radar (terminal).
+Przełączasz je kafelkami w lewym dolnym rogu albo w Ustawieniach. Wybór jest zapamiętywany w przeglądarce.
+
+![Motywy wyglądu](docs/motywy.png)
+
 > didIJJIT to nieoficjalne, fanowskie narzędzie do własnego użytku. **Nie jest produktem justjoin.it** ani nie jest z nim w żaden sposób powiązany; nazwa to tylko gra słów.
 > Korzysta z tego samego publicznego API listy ofert co strona justjoin.it, więc może przestać działać po zmianach po ich stronie.
 > Oferty pobiera tylko po kliknięciu „Odśwież oferty” — nie odpytuje serwisu w tle.
@@ -43,7 +48,7 @@ Zatrzymanie: zamknij okno albo naciśnij `Ctrl+C`.
 
 ## 2. Ustawienia — jakie oferty Cię interesują
 
-Najprościej w programie: zakładka **⚙ Ustawienia** (albo adres `http://localhost:8765/#ustawienia`).
+Najprościej w programie: menu **Ustawienia** (albo adres `http://localhost:8765/#ustawienia`).
 Zaznaczasz kategorie, miasta, promień, pracę zdalną, poziom doświadczenia i filtry, klikasz **Zapisz**, a potem **Odśwież oferty**.
 
 ![Ustawienia](docs/ustawienia.png)

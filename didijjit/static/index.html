@@ -1,123 +1,304 @@
 <!doctype html>
-<html lang="pl">
+<html lang="pl" data-theme="dashboard">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>didIJJIT</title>
+<script>
+  // motyw ustawiamy przed narysowaniem strony, żeby nie mignął domyślny
+  // ?motyw=radar w adresie (np. do zrzutów ekranu) ma pierwszeństwo przed zapamiętanym wyborem
+  try {
+    const t = new URLSearchParams(location.search).get("motyw") || localStorage.getItem("theme");
+    if (["dashboard", "aurora", "brutal", "radar"].includes(t)) document.documentElement.dataset.theme = t;
+  } catch {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--cream:#f8f6f0;--g5:#3f8a60;--g7:#2d6a4a;--g9:#1c3d2e;--ink:#1f2a24;--line:#dfe5e0;--mint:#e6efe9;--muted:#5d6b63;--sun:#f2b84b;--red:#a8432f}
-*{box-sizing:border-box}
-body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.45 "DM Sans",system-ui,sans-serif}
-header{background:var(--g9);color:#fff;padding:18px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-header h1{font:28px "DM Serif Display",serif;margin:0;letter-spacing:.3px}
-header h1 b{color:var(--sun);font-weight:400}
-header .meta{color:#bcd3c5;font-size:13px;flex:1}
-button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:6px 12px}
-button:hover{border-color:var(--g5)}
-button.primary{background:var(--sun);border-color:var(--sun);color:var(--g9);font-weight:700;padding:9px 18px}
-button.primary:disabled{opacity:.6;cursor:wait}
-button.on{background:var(--g7);border-color:var(--g7);color:#fff}
-button.danger{color:var(--red)}
-main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
-nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-nav .sep{width:1px;height:24px;background:var(--line);margin:0 6px}
-nav input{margin-left:auto;padding:7px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;min-width:220px}
-.count{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--mint);color:var(--g7);font-size:12px;font-weight:700}
-button.on .count{background:rgba(255,255,255,.2);color:#fff}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:8px 16px}
-.card.fresh{border-left:5px solid var(--sun)}
-.card.st-aplikowalem{border-left:5px solid var(--g5)}
-.card.st-nie_interesuje{opacity:.6}
-.title{font-weight:700;font-size:16px;color:var(--g9);text-decoration:none}
-.title:hover{text-decoration:underline}
-.badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:2px}
-.b-new{background:var(--sun);color:var(--g9)}
-.b-app{background:var(--g5);color:#fff}
-.sub{color:var(--muted);font-size:13.5px}
-.sub b{color:var(--ink);font-weight:600}
-.warn{grid-column:1/-1;background:#fdf3dc;border:1px solid #f0d69a;border-radius:8px;padding:6px 10px;font-size:13.5px}
-.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start}
-.note{grid-column:1/-1;display:flex;gap:6px}
-.note input{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px}
-.empty{padding:40px;text-align:center;color:var(--muted)}
-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
-th{background:var(--mint);color:var(--g9);font-size:12.5px;text-transform:uppercase;letter-spacing:.4px}
-td input{width:100%;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13.5px}
-.k-wyslana{color:var(--g7);font-weight:700}.k-formularz{color:#9a6b00;font-weight:700}.k-obejrzana{color:var(--muted)}
-details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
-details div{font-size:12px;color:var(--muted);word-break:break-all}
-form.add{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
-form.add input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--g9);color:#fff;padding:10px 18px;border-radius:10px;display:none}
-h2{font:22px "DM Serif Display",serif;color:var(--g9);margin:8px 0}
-.hint{color:var(--muted);font-size:13.5px;margin:4px 0 12px}
-.tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
-.chip{font-size:13px;padding:4px 10px;border-radius:16px}
-.tools select{margin-left:auto;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px;background:#fff}
-.tools .lbl{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:62px}
-.chip.pick{border-style:dashed;color:var(--muted)}
-.chip.pick.sel{border-style:solid;background:var(--mint);border-color:var(--g5);color:var(--g9);font-weight:600}
-.cat{display:inline-block;font-size:11.5px;font-weight:600;color:var(--g7);background:var(--mint);padding:1px 7px;border-radius:5px}
-.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
-.panel h3{margin:0 0 4px;font-size:16px;color:var(--g9)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 14px;margin-top:8px}
-.grid label,.row label{display:flex;gap:7px;align-items:center;font-size:14px;cursor:pointer}
-.row{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:8px}
-.panel textarea,.panel input[type=number],.panel input[type=text]{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
-.panel textarea{width:100%;min-height:38px;resize:vertical}
-.ok{color:var(--g7);font-weight:700}.no{color:var(--red);font-weight:700}
-code.path{display:block;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;word-break:break-all;font-size:13px}
-ol li{margin:4px 0}
-.banner{background:#fdf3dc;border:1px solid #f0d69a;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center}
-.banner span{flex:1}
-.spin{display:inline-block;width:16px;height:16px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px}
-.spin.big{width:42px;height:42px;border-width:5px;color:var(--g5)}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading{position:fixed;inset:0;background:rgba(248,246,240,.82);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;color:var(--g9);font-size:16px}
-.loading.on{display:flex}
-.loading small{color:var(--muted);font-size:13.5px}
-@media(prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
-@media(max-width:700px){.card{grid-template-columns:1fr}.actions{justify-content:flex-start}nav input{margin-left:0;width:100%}}
+/* ===== motywy: wszystkie kolory i kształty w zmiennych ===== */
+:root, [data-theme="dashboard"] {
+  --bg:#f5f6fa; --side:#fff; --surface:#fff; --surface2:#fafbfd; --border:#e6e8f0; --line:#eef0f6;
+  --text:#151a2d; --muted:#7b819c; --accent:#4f46e5; --accent2:#06b6d4; --accent-soft:#eef0ff; --on-accent:#fff;
+  --ok:#15803d; --ok-soft:#dcfce7; --new:#0369a1; --new-soft:#e0f2fe; --warn:#b45309; --warn-soft:#fef3c7; --danger:#dc2626;
+  --radius:14px; --bw:1px; --shadow:0 1px 2px rgba(16,24,40,.04); --btn-shadow:none;
+  --font:Inter, system-ui, sans-serif; --head:Inter, system-ui, sans-serif;
+}
+[data-theme="aurora"] {
+  --bg:#0b0f1e; --side:rgba(255,255,255,.035); --surface:rgba(255,255,255,.045); --surface2:rgba(255,255,255,.03);
+  --border:rgba(255,255,255,.1); --line:rgba(255,255,255,.07);
+  --text:#e8ecff; --muted:#8b93b8; --accent:#8b6cff; --accent2:#22c3ff; --accent-soft:rgba(139,108,255,.16); --on-accent:#fff;
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.14); --new:#7dd3fc; --new-soft:rgba(34,195,255,.14); --warn:#fcd34d; --warn-soft:rgba(252,211,77,.1); --danger:#f87171;
+  --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.25); --btn-shadow:0 6px 20px rgba(139,108,255,.35);
+}
+[data-theme="brutal"] {
+  --bg:#fff7e6; --side:#ffd23f; --surface:#fff; --surface2:#fffdf6; --border:#111; --line:#111;
+  --text:#111; --muted:#4a4a4a; --accent:#ff5d8f; --accent2:#ffd23f; --accent-soft:#ffd23f; --on-accent:#111;
+  --ok:#111; --ok-soft:#b8f28b; --new:#111; --new-soft:#7ee8fa; --warn:#111; --warn-soft:#ffb4a2; --danger:#c1121f;
+  --radius:12px; --bw:2.5px; --shadow:5px 5px 0 #111; --btn-shadow:3px 3px 0 #111;
+  --font:"Space Grotesk", system-ui, sans-serif; --head:"Space Grotesk", system-ui, sans-serif;
+}
+[data-theme="radar"] {
+  --bg:#06120d; --side:rgba(4,24,15,.9); --surface:rgba(10,40,26,.55); --surface2:rgba(10,40,26,.35);
+  --border:rgba(60,255,154,.25); --line:rgba(60,255,154,.12);
+  --text:#c9f7dc; --muted:#5fae84; --accent:#3cff9a; --accent2:#ffd166; --accent-soft:rgba(60,255,154,.12); --on-accent:#06120d;
+  --ok:#ffd166; --ok-soft:rgba(255,209,102,.14); --new:#3cff9a; --new-soft:rgba(60,255,154,.14); --warn:#ff8f9a; --warn-soft:rgba(255,95,109,.1); --danger:#ff5f6d;
+  --radius:10px; --shadow:0 0 0 rgba(0,0,0,0); --btn-shadow:0 0 18px rgba(60,255,154,.35);
+  --font:"JetBrains Mono", ui-monospace, monospace; --head:"JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ===== tła motywów ===== */
+[data-theme="aurora"] body::before {
+  /* poświaty celowo słabe — mają dawać klimat, a nie świecić po oczach */
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(600px 420px at 8% -5%, rgba(124,92,255,.16), transparent 70%),
+    radial-gradient(520px 420px at 100% 35%, rgba(0,194,255,.09), transparent 70%),
+    radial-gradient(500px 380px at 45% 110%, rgba(255,79,216,.07), transparent 70%);
+}
+[data-theme="aurora"] .surface, [data-theme="aurora"] aside { backdrop-filter:blur(12px); }
+[data-theme="radar"] body::after {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:60;
+  background:repeating-linear-gradient(0deg, rgba(0,255,140,.03) 0 1px, transparent 1px 4px);
+}
+
+/* ===== układ ===== */
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:14.5px/1.45 var(--font); display:flex; min-height:100vh; }
+a { color:var(--accent); }
+aside {
+  width:248px; flex:none; background:var(--side); border-right:var(--bw) solid var(--border);
+  padding:22px 16px; position:sticky; top:0; height:100vh; overflow-y:auto; z-index:1; display:flex; flex-direction:column;
+}
+main { flex:1; min-width:0; padding:24px 32px 60px; position:relative; z-index:1; }
+
+.logo { display:flex; align-items:center; gap:10px; font:800 23px var(--head); letter-spacing:-.6px; margin:0 6px 26px; }
+.logo b { color:var(--accent); }
+.mark { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; font-size:16px; color:var(--on-accent);
+  background:linear-gradient(135deg, var(--accent), var(--accent2)); border:var(--bw) solid var(--border); box-shadow:var(--btn-shadow); }
+[data-theme="dashboard"] .mark, [data-theme="aurora"] .mark { border:0; }
+.nav button { all:unset; box-sizing:border-box; width:100%; display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  padding:9px 12px; border-radius:10px; color:var(--muted); font-weight:500; margin-bottom:2px; }
+.nav button:hover { background:var(--accent-soft); color:var(--text); }
+.nav button.on { background:var(--accent-soft); color:var(--accent); font-weight:700; }
+[data-theme="brutal"] .nav button.on { background:#111; color:#ffd23f; }
+[data-theme="brutal"] .nav button { color:#111; }
+.nav i { font-style:normal; font-size:12px; padding:1px 8px; border-radius:999px; background:var(--surface2); border:1px solid var(--line); color:var(--muted); }
+.nav button.on i { background:var(--accent); color:var(--on-accent); border-color:transparent; }
+.sec { font-size:11px; text-transform:uppercase; letter-spacing:.9px; color:var(--muted); margin:20px 12px 6px; font-weight:700; }
+.extcard { margin-top:22px; border-radius:var(--radius); padding:13px 14px; font-size:13px; line-height:1.4; cursor:pointer;
+  background:linear-gradient(135deg, var(--accent), var(--accent2)); color:var(--on-accent); border:var(--bw) solid var(--border); box-shadow:var(--btn-shadow); }
+[data-theme="dashboard"] .extcard, [data-theme="aurora"] .extcard { border:0; }
+.extcard b { display:block; font-size:14px; margin-bottom:3px; }
+.extcard.off { background:var(--warn-soft); color:var(--text); }
+.themes { margin-top:auto; padding-top:20px; }
+.themes .row2 { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:6px 6px 0; }
+.sw { all:unset; cursor:pointer; height:34px; border-radius:9px; border:2px solid transparent; position:relative; overflow:hidden; }
+.sw.on { border-color:var(--accent); box-shadow:0 0 0 2px var(--bg); }
+.sw span { position:absolute; inset:0; }
+.sw-dashboard span { background:linear-gradient(135deg,#f5f6fa 50%,#4f46e5 50%); }
+.sw-aurora span { background:linear-gradient(135deg,#0b0f1e 50%,#8b6cff 50%); }
+.sw-brutal span { background:linear-gradient(135deg,#ffd23f 50%,#ff5d8f 50%); border:2px solid #111; border-radius:7px; }
+.sw-radar span { background:linear-gradient(135deg,#06120d 50%,#3cff9a 50%); }
+
+/* nagłówek widoku */
+.top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+h1 { font:800 26px var(--head); letter-spacing:-.6px; margin:0; }
+[data-theme="radar"] h1::before { content:"> "; color:var(--accent); }
+.subt { color:var(--muted); font-size:13.5px; margin-top:2px; }
+.search { margin-left:auto; width:290px; padding:10px 14px; border-radius:10px; border:var(--bw) solid var(--border); background:var(--surface);
+  color:var(--text); font:inherit; }
+.search::placeholder { color:var(--muted); }
+
+/* przyciski */
+button { font:inherit; cursor:pointer; color:var(--text); }
+.btn { border:var(--bw) solid var(--border); background:var(--surface); padding:8px 13px; border-radius:10px; font-weight:600; box-shadow:var(--btn-shadow); }
+[data-theme="dashboard"] .btn, [data-theme="aurora"] .btn, [data-theme="radar"] .btn { box-shadow:none; }
+.btn:hover { border-color:var(--accent); }
+.primary { background:var(--accent); color:var(--on-accent); border:var(--bw) solid var(--accent); padding:10px 18px; border-radius:10px; font-weight:700; box-shadow:var(--btn-shadow); }
+[data-theme="aurora"] .primary { background:linear-gradient(90deg,var(--accent),var(--accent2)); border:0; }
+[data-theme="brutal"] .primary { border-color:#111; }
+.primary:disabled { opacity:.7; cursor:wait; }
+.danger { color:var(--danger); }
+
+/* kafelki statystyk */
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
+.surface { background:var(--surface); border:var(--bw) solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); }
+.stat { padding:15px 18px; cursor:pointer; }
+.stat span { color:var(--muted); font-size:13px; }
+.stat b { display:block; font:800 30px var(--head); letter-spacing:-1px; margin:3px 0 8px; }
+.bar { height:6px; border-radius:6px; background:var(--line); overflow:hidden; }
+.bar u { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:6px; }
+[data-theme="brutal"] .stat:nth-child(1) { background:#7ee8fa; } [data-theme="brutal"] .stat:nth-child(3) { background:#b8f28b; }
+[data-theme="brutal"] .stat:nth-child(4) { background:#ffb4a2; } [data-theme="brutal"] .bar { border:2px solid #111; height:10px; background:#fff; }
+[data-theme="brutal"] .bar u { background:#111; }
+[data-theme="radar"] .stat b { color:var(--accent); text-shadow:0 0 14px rgba(60,255,154,.45); }
+
+/* rzędy guzików kategorii */
+.tools { display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+.lbl { font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; min-width:70px; }
+.chip { border:var(--bw) solid var(--border); background:var(--surface); border-radius:8px; padding:5px 11px; font-size:13px; color:var(--muted); }
+.chip.pick { border-style:dashed; }
+[data-theme="brutal"] .chip.pick { border-style:solid; }
+.chip.on, .chip.pick.sel { border-style:solid; border-color:var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:600; }
+[data-theme="brutal"] .chip.on, [data-theme="brutal"] .chip.pick.sel { background:#111; color:#ffd23f; border-color:#111; box-shadow:3px 3px 0 var(--accent); }
+.chip em { font-style:normal; margin-left:6px; font-size:12px; opacity:.75; }
+.tools select { margin-left:auto; padding:6px 10px; border-radius:8px; border:var(--bw) solid var(--border); background:var(--surface); color:var(--text); font:inherit; font-size:13.5px; }
+[data-theme="aurora"] select option, [data-theme="radar"] select option { background:#111; }
+
+/* tabela ofert */
+.tablewrap { overflow-x:auto; margin-top:8px; }
+table { width:100%; border-collapse:collapse; }
+th { text-align:left; font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; padding:11px 10px;
+  background:var(--surface2); border-bottom:var(--bw) solid var(--border); font-weight:700; }
+td { padding:12px 10px; border-bottom:1px solid var(--line); vertical-align:middle; font-size:14px; }
+tr:last-child td { border-bottom:0; }
+tbody tr:hover td { background:var(--surface2); }
+tr.fresh td:first-child { box-shadow:inset 4px 0 0 var(--accent2); }
+tr.st-nie_interesuje td { opacity:.55; }
+.who { display:flex; gap:12px; align-items:flex-start; }
+.av { flex:none; width:38px; height:38px; border-radius:10px; display:grid; place-items:center; color:#fff; font-weight:700; font-size:13px; }
+[data-theme="brutal"] .av { border:2.5px solid #111; color:#111; }
+[data-theme="radar"] .av { background:transparent !important; border:1px solid var(--accent); color:var(--accent); }
+.t { font-weight:700; color:var(--text); text-decoration:none; font-size:14.5px; }
+.t:hover { text-decoration:underline; }
+[data-theme="radar"] .t::before { content:"> "; color:var(--accent); }
+.co { color:var(--muted); font-size:12.8px; }
+.wn { display:inline-block; margin-top:6px; font-size:12.5px; color:var(--warn); background:var(--warn-soft); border-radius:6px; padding:2px 8px; }
+[data-theme="brutal"] .wn { border:2px dashed #111; font-weight:600; }
+.nt { display:block; margin-top:5px; font-size:12.5px; color:var(--muted); font-style:italic; }
+.sal { font-weight:700; white-space:nowrap; font-size:13.5px; }
+[data-theme="radar"] .sal { color:var(--accent2); }
+.pill { display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; }
+.p-nowa { background:var(--new-soft); color:var(--new); }
+.p-przejrzana { background:var(--surface2); color:var(--muted); border:1px solid var(--line); }
+.p-aplikowalem { background:var(--ok-soft); color:var(--ok); }
+.p-nie_interesuje { background:var(--surface2); color:var(--muted); text-decoration:line-through; }
+[data-theme="brutal"] .pill { border:2px solid #111; border-radius:7px; transform:rotate(2deg); }
+.cat { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
+[data-theme="brutal"] .cat { color:#111; border:2px solid #111; }
+/* 4 ikony w siatce 2×2, żeby tabela mieściła się na laptopie */
+.acts { display:grid; grid-template-columns:repeat(2, 32px); gap:5px; justify-content:end; }
+.ic { width:32px; height:32px; border-radius:8px; border:var(--bw) solid var(--border); background:var(--surface); color:var(--muted); font-size:14px; display:grid; place-items:center; }
+.ic:hover { color:var(--accent); border-color:var(--accent); }
+.ic.go { color:var(--ok); }
+.ago { color:var(--muted); font-size:13px; white-space:nowrap; }
+
+/* pozostałe widoki */
+.panel { padding:16px 18px; margin-bottom:14px; }
+.panel h3 { margin:0 0 4px; font:700 16px var(--head); }
+.hint { color:var(--muted); font-size:13.5px; margin:4px 0 12px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:5px 14px; margin-top:8px; }
+.grid label, .row label { display:flex; gap:7px; align-items:center; cursor:pointer; }
+.row { display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+input[type=checkbox] { accent-color:var(--accent); width:16px; height:16px; }
+.panel textarea, .panel input[type=number], form.add input, td input:not([type=checkbox]) {
+  font:inherit; font-size:14px; padding:7px 10px; border:var(--bw) solid var(--border); border-radius:8px; background:var(--surface2); color:var(--text); }
+.panel textarea { width:100%; min-height:38px; resize:vertical; margin:4px 0 8px; }
+td input:not([type=checkbox]) { width:100%; padding:4px 7px; }
+form.add { display:flex; gap:6px; flex-wrap:wrap; margin:12px 0; }
+.ok { color:var(--ok); font-weight:700; } .no { color:var(--danger); font-weight:700; }
+code { font-family:"JetBrains Mono", monospace; font-size:12.5px; }
+code.path { display:block; background:var(--surface2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:6px 0; word-break:break-all; }
+ol li { margin:4px 0; }
+details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+details div { font-size:12px; color:var(--muted); word-break:break-all; }
+.k-wyslana { color:var(--ok); font-weight:700; } .k-formularz { color:var(--warn); font-weight:700; } .k-obejrzana { color:var(--muted); }
+.banner { display:flex; gap:10px; align-items:center; padding:10px 14px; margin-bottom:16px; background:var(--warn-soft); }
+.banner span { flex:1; }
+.empty { padding:50px; text-align:center; color:var(--muted); }
+
+/* powiadomienie i ładowanie */
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg); padding:10px 18px; border-radius:10px; display:none; z-index:70; font-weight:600; }
+.loading { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:50;
+  background:color-mix(in srgb, var(--bg) 84%, transparent); font-size:16px; }
+.loading.on { display:flex; }
+.loading small { color:var(--muted); font-size:13.5px; }
+.spin { display:inline-block; width:16px; height:16px; border:3px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-3px; }
+.spin.big { width:46px; height:46px; border-width:5px; color:var(--accent); }
+/* w motywie radaru zamiast kółka obraca się wiązka radaru */
+.radar { display:none; width:120px; height:120px; border-radius:50%; position:relative; border:1.5px solid rgba(60,255,154,.6);
+  background:radial-gradient(circle, rgba(60,255,154,.12), transparent 70%); box-shadow:0 0 30px rgba(60,255,154,.2); }
+.radar::before { content:""; position:absolute; inset:0; border-radius:50%; animation:spin 1.6s linear infinite;
+  background:conic-gradient(from 0deg, rgba(60,255,154,.55), transparent 80deg, transparent); }
+.radar::after { content:""; position:absolute; inset:30px; border-radius:50%; border:1px solid rgba(60,255,154,.3); }
+[data-theme="radar"] .loading .spin.big { display:none; } [data-theme="radar"] .loading .radar { display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin, .radar::before { animation-duration:2.6s; } }
+
+/* wąskie ekrany: menu na górze, tabela jako karty */
+@media (max-width:900px) {
+  body { display:block; }
+  aside { width:auto; height:auto; position:static; border-right:0; border-bottom:var(--bw) solid var(--border); }
+  .nav { display:flex; flex-wrap:wrap; gap:4px; } .nav button { width:auto; gap:8px; } .sec, .extcard { display:none; }
+  .themes { margin-top:10px; }
+  main { padding:16px; }
+  .stats { grid-template-columns:repeat(2,1fr); }
+  .search { width:100%; margin-left:0; }
+  table, tbody, tr, td { display:block; } thead { display:none; }
+  tr { border-bottom:1px solid var(--line); padding:8px 0; } td { border:0; padding:4px 14px; }
+  .acts { display:flex; justify-content:flex-start; }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1 title="Did I Just Join IT?">didI<b>JJIT</b>?</h1>
-  <div class="meta" id="meta">…</div>
-  <button class="primary" id="refresh">Odśwież oferty</button>
-</header>
+<aside>
+  <div class="logo"><div class="mark">✓</div><span>didI<b>JJIT</b>?</span></div>
+  <div class="nav" id="nav"></div>
+  <div class="extcard" id="extcard"></div>
+  <div class="themes">
+    <div class="sec" style="margin-top:0">Wygląd</div>
+    <div class="row2" id="themes"></div>
+  </div>
+</aside>
 <main>
-  <nav id="nav"></nav>
+  <div class="top">
+    <div><h1 id="title">Nowe oferty</h1><div class="subt" id="meta">…</div></div>
+    <input class="search" id="q" placeholder="🔍 Szukaj stanowiska, firmy lub miasta…">
+    <button class="primary" id="refresh">⟳ Odśwież oferty</button>
+  </div>
   <section id="view"></section>
 </main>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status"></div>
 <div class="loading" id="loading" role="status" aria-live="polite">
-  <span class="spin big"></span>
+  <span class="spin big"></span><div class="radar"></div>
   <b>Pobieram oferty z justjoin.it…</b>
   <small id="loading-time">0 s</small>
 </div>
 <script>
-const TABS = [
-  ["nowe", "Nowe"], ["aktywne", "Wszystkie"], ["przejrzane", "Przejrzane"],
-  ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["wygasle", "Wygasłe"],
+const OFFER_VIEWS = [
+  ["nowe", "Nowe", "Nowe oferty"], ["aktywne", "Wszystkie", "Wszystkie oferty"], ["przejrzane", "Przejrzane", "Przejrzane"],
+  ["aplikowalem", "Aplikowałem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje", "Nie interesuje"], ["wygasle", "Wygasłe", "Wygasłe oferty"],
 ];
-const STATUS = [["przejrzana", "Przejrzana"], ["aplikowalem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje"], ["nowa", "Nowa"]];
+const TOOL_VIEWS = [["aplikacje", "Moje aplikacje"], ["historia", "Import z historii"], ["ustawienia", "Ustawienia"], ["wtyczka", "Wtyczka"]];
+const THEMES = [["dashboard", "Dashboard"], ["aurora", "Aurora"], ["brutal", "Brutal"], ["radar", "Radar"]];
+const STATUS_LABEL = {nowa: "Nowa", przejrzana: "Przejrzana", aplikowalem: "Aplikowałeś", nie_interesuje: "Nie interesuje"};
 const store = {get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }};
 // adres z #zakładką (np. localhost:8765/#ustawienia) otwiera od razu tę zakładkę
-const VIEWS_ALL = ["nowe", "aktywne", "przejrzane", "aplikowalem", "nie_interesuje", "wygasle", "aplikacje", "historia", "ustawienia", "wtyczka"];
+const VIEWS_ALL = [...OFFER_VIEWS.map((v) => v[0]), ...TOOL_VIEWS.map((v) => v[0])];
 let view = VIEWS_ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("view", "nowe"), query = "", summary = null, meta = null;
 let category = store.get("category", ""), sort = store.get("sort", "najnowsze");
 const extVersion = () => document.documentElement.dataset.didijjitExtension;
 const catLabel = (k) => meta?.categories?.[k] || k;
+const isOfferView = () => OFFER_VIEWS.some((v) => v[0] === view);
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = (iso) => iso ? new Date(iso).toLocaleString("pl-PL", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}) : "";
 const day = (iso) => iso ? new Date(iso.length === 10 ? iso + "T12:00" : iso).toLocaleDateString("pl-PL") : "";
 const today = () => new Date().toISOString().slice(0, 10);
+function ago(iso) {
+  if (!iso) return "";
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 60) return `${Math.max(m, 1)} min temu`;
+  if (m < 60 * 24) return `${Math.round(m / 60)} godz. temu`;
+  return m < 60 * 48 ? "wczoraj" : day(iso);
+}
+// stały kolor i inicjały firmy (bez pobierania logotypów)
+function avatar(name) {
+  let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  const ini = name.replace(/\b(sp\.?|z|o\.?o\.?|s\.?a\.?|polska|poland)\b/gi, "").trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+  return `<div class="av" style="background:hsl(${h} 62% 55%)">${esc(ini)}</div>`;
+}
 
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3500); }
 
@@ -128,29 +309,43 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function go(v) { view = v; store.set("view", v); history.replaceState(null, "", "#" + v); renderNav(); render(); }
+
 async function loadSummary() {
   summary = await api("/api/summary");
-  const l = summary.last_refresh;
-  const c = summary.config;
-  const scope = `${c.categories.join(", ")} · ${[...c.cities.map((x) => c.radius_km ? `${x} +${c.radius_km} km` : x), ...(c.remote ? ["zdalnie"] : [])].join(", ")} (${c.source})`;
-  $("#meta").textContent = (l ? `Ostatnie odświeżenie: ${fmt(l.at)} · pobrano ${l.fetched}, nowych ${l.added}` : "Jeszcze nie pobrano ofert — kliknij „Odśwież oferty”.") + " · " + scope;
   renderNav();
+}
+
+function renderHeader() {
+  const l = summary?.last_refresh, c = summary?.config;
+  const titles = Object.fromEntries([...OFFER_VIEWS.map((v) => [v[0], v[2]]), ...TOOL_VIEWS]);
+  $("#title").textContent = titles[view] || "";
+  const scope = c ? `${c.categories.map(catLabel).join(", ")} · ${[...c.cities.map((x) => (meta?.cities?.[x] || x) + (c.radius_km ? ` +${c.radius_km} km` : "")), ...(c.remote ? ["zdalnie"] : [])].join(", ")}` : "";
+  $("#meta").textContent = scope + (l ? ` · odświeżono ${ago(l.at)}` : " · jeszcze nie pobrano ofert");
+  $("#q").style.display = isOfferView() ? "" : "none";
 }
 
 function renderNav() {
   const c = summary?.counts || {};
-  $("#nav").innerHTML = TABS.map(([k, label]) => `<button data-v="${k}" class="${view === k ? "on" : ""}">${label}<span class="count">${c[k] ?? 0}</span></button>`).join("")
-    + `<span class="sep"></span><button data-v="aplikacje" class="${view === "aplikacje" ? "on" : ""}">Moje aplikacje<span class="count">${summary?.applications ?? 0}</span></button>`
-    + `<button data-v="historia" class="${view === "historia" ? "on" : ""}">Import z historii</button>`
-    + `<span class="sep"></span><button data-v="ustawienia" class="${view === "ustawienia" ? "on" : ""}">⚙ Ustawienia</button>`
-    + `<button data-v="wtyczka" class="${view === "wtyczka" ? "on" : ""}">Wtyczka ${extVersion() ? "✓" : ""}</button>`
-    + (["aplikacje", "historia", "ustawienia", "wtyczka"].includes(view) ? "" : `<input id="q" placeholder="Szukaj: stanowisko, firma, miasto" value="${esc(query)}">`);
-  document.querySelectorAll("#nav button").forEach((b) => b.onclick = () => { view = b.dataset.v; store.set("view", view); history.replaceState(null, "", "#" + view); renderNav(); render(); });
-  const q = $("#q");
-  if (q) q.oninput = () => { query = q.value; clearTimeout(q._h); q._h = setTimeout(render, 250); };
+  $("#nav").innerHTML = OFFER_VIEWS.map(([k, label]) => `<button data-v="${k}" class="${view === k ? "on" : ""}">${label}<i>${c[k] ?? 0}</i></button>`).join("")
+    + `<div class="sec">Narzędzia</div>`
+    + TOOL_VIEWS.map(([k, label]) => `<button data-v="${k}" class="${view === k ? "on" : ""}">${label}${k === "aplikacje" ? `<i>${summary?.applications ?? 0}</i>` : k === "wtyczka" && extVersion() ? "<i>✓</i>" : ""}</button>`).join("");
+  document.querySelectorAll("#nav [data-v]").forEach((b) => b.onclick = () => go(b.dataset.v));
+  const ext = $("#extcard");
+  ext.className = "extcard" + (extVersion() ? "" : " off");
+  ext.innerHTML = extVersion() ? `<b>🧩 Wtyczka aktywna</b>Na justjoin.it zobaczysz, czy już aplikowałeś do firmy.`
+    : `<b>🧩 Zainstaluj wtyczkę</b>Pokaże na justjoin.it, czy już aplikowałeś do firmy. Kliknij, żeby zobaczyć jak.`;
+  ext.onclick = () => go("wtyczka");
+  const cur = document.documentElement.dataset.theme;
+  $("#themes").innerHTML = THEMES.map(([k, l]) => `<button class="sw sw-${k} ${cur === k ? "on" : ""}" data-theme-pick="${k}" title="Motyw: ${l}" aria-label="Motyw ${l}"><span></span></button>`).join("");
+  document.querySelectorAll("[data-theme-pick]").forEach((b) => b.onclick = () => setTheme(b.dataset.themePick));
+  renderHeader();
 }
 
+function setTheme(t) { document.documentElement.dataset.theme = t; store.set("theme", t); renderNav(); }
+
 async function render() {
+  renderHeader();
   if (view === "aplikacje") return renderApplications();
   if (view === "historia") return renderHistory();
   if (view === "ustawienia") return renderSettings();
@@ -158,46 +353,64 @@ async function render() {
   const data = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${sort}`);
   const rows = data.offers, cats = data.categories;
   const total = Object.values(cats).reduce((a, b) => a + b, 0);
+  const c = summary?.counts || {};
+  const all = Math.max(c.aktywne || 0, 1);
+  const stats = [["nowe", "Nieprzejrzane oferty", c.nowe || 0, (c.nowe || 0) / all],
+    ["aktywne", "Wszystkie oferty", c.aktywne || 0, 1],
+    ["aplikacje", "Wysłane CV", summary?.applications || 0, Math.min((summary?.applications || 0) / 20, 1)],
+    ["aktywne", "Oferty firm, gdzie już aplikowałeś", summary?.warnings || 0, (summary?.warnings || 0) / all]];
+  const statsHtml = `<div class="stats">${stats.map(([v, l, n, p]) => `<div class="stat surface" data-go="${v}"><span>${l}</span><b>${n}</b><div class="bar"><u style="width:${Math.round(p * 100)}%"></u></div></div>`).join("")}</div>`;
   const banner = !extVersion() && store.get("hideExtBanner", "") !== "1"
-    ? `<div class="banner"><span>Zainstaluj wtyczkę do przeglądarki — na justjoin.it pokaże, czy już aplikowałeś do firmy.</span>
-       <button data-go="wtyczka">Jak zainstalować</button><button data-hide>Nie pokazuj</button></div>` : "";
+    ? `<div class="banner surface"><span>🧩 Zainstaluj wtyczkę do przeglądarki — na justjoin.it pokaże, czy już aplikowałeś do firmy.</span>
+       <button class="btn" data-go="wtyczka">Jak zainstalować</button><button class="btn" data-hide>Nie pokazuj</button></div>` : "";
   const enabled = summary?.config?.categories || [];
-  const picker = meta ? `<div class="tools"><span class="lbl" title="Kategorie pobierane z justjoin.it — kliknij, żeby włączyć lub wyłączyć">Pobieraj:</span>
+  const picker = meta ? `<div class="tools"><span class="lbl" title="Kategorie pobierane z justjoin.it — kliknij, żeby włączyć lub wyłączyć na stałe">Pobieraj:</span>
     ${Object.entries(meta.categories).map(([k, l]) => `<button class="chip pick ${enabled.includes(k) ? "sel" : ""}" data-toggle="${esc(k)}"
       title="${enabled.includes(k) ? "Kliknij, żeby przestać pobierać" : "Kliknij, żeby pobierać"} oferty z kategorii ${esc(l)}">${enabled.includes(k) ? "✓ " : ""}${esc(l)}</button>`).join("")}</div>` : "";
   const tools = picker + `<div class="tools"><span class="lbl">Pokaż:</span>
-    <button class="chip ${category ? "" : "on"}" data-cat="">Wszystkie kategorie<span class="count">${total}</span></button>
-    ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip ${category === k ? "on" : ""}" data-cat="${esc(k)}">${esc(catLabel(k))}<span class="count">${n}</span></button>`).join("")}
+    <button class="chip ${category ? "" : "on"}" data-cat="">Wszystkie<em>${total}</em></button>
+    ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip ${category === k ? "on" : ""}" data-cat="${esc(k)}">${esc(catLabel(k))}<em>${n}</em></button>`).join("")}
     <select id="sort" title="Sortowanie">
       ${[["najnowsze", "Najnowsze"], ["kategoria", "Wg kategorii"], ["firma", "Wg firmy"], ["miasto", "Wg miasta"]].map(([k, l]) => `<option value="${k}" ${sort === k ? "selected" : ""}>${l}</option>`).join("")}
     </select></div>`;
-  $("#view").innerHTML = banner + tools + (rows.length ? rows.map(cardHtml).join("") : `<div class="empty">Brak ofert w tym widoku.</div>`);
+  const table = rows.length ? `<div class="surface tablewrap"><table>
+    <thead><tr><th>Stanowisko</th><th>Kategoria</th><th>Lokalizacja</th><th>Stawka</th><th>Status</th><th>Dodano</th><th></th></tr></thead>
+    <tbody>${rows.map(rowHtml).join("")}</tbody></table></div>` : `<div class="surface empty">Brak ofert w tym widoku.</div>`;
+  $("#view").innerHTML = statsHtml + banner + tools + table;
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
   document.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { category = b.dataset.cat; store.set("category", category); render(); });
   document.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => toggleCategory(b.dataset.toggle));
   $("#sort").onchange = (e) => { sort = e.target.value; store.set("sort", sort); render(); };
-  document.querySelector("[data-go]")?.addEventListener("click", () => { view = "wtyczka"; store.set("view", view); renderNav(); render(); });
   document.querySelector("[data-hide]")?.addEventListener("click", () => { store.set("hideExtBanner", "1"); render(); });
-  document.querySelectorAll("[data-st]").forEach((b) => b.onclick = () => setStatus(b.closest(".card").dataset.g, b.dataset.st));
-  document.querySelectorAll(".note input").forEach((i) => i.onchange = () => api(`/api/offers/${i.closest(".card").dataset.g}/note`, {method: "POST", body: {note: i.value}}).then(() => toast("Notatka zapisana")));
+  document.querySelectorAll("[data-st]").forEach((b) => b.onclick = () => setStatus(b.closest("tr").dataset.g, b.dataset.st));
+  document.querySelectorAll("[data-note]").forEach((b) => b.onclick = () => editNote(b.closest("tr").dataset.g, b.dataset.note));
 }
 
-function cardHtml(o) {
-  const isNew = o.status === "nowa";
+function rowHtml(o) {
   const hist = o.company_history.map((a) => `${day(a.applied_at)}${a.title ? " – " + esc(a.title) : ""}`).join("; ");
-  return `<div class="card st-${o.status} ${isNew && o.fresh ? "fresh" : ""}" data-g="${o.guid}">
-    <div>
-      <a class="title" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>
-      ${isNew ? `<span class="badge b-new">${o.fresh ? "Nowa" : "Nieprzejrzana"}</span>` : ""}
-      ${o.status === "aplikowalem" ? `<span class="badge b-app">Aplikowałem ${day(o.status_at)}</span>` : ""}
-      <div class="sub"><span class="cat">${esc(catLabel(o.category))}</span> <b>${esc(o.company)}</b> · ${esc(o.city)} · ${esc(o.workplace)} · ${esc(o.experience)}</div>
-      <div class="sub">${o.salary ? esc(o.salary) + " · " : ""}opublikowana ${fmt(o.published_at)}</div>
-    </div>
-    <div class="actions">
-      ${STATUS.filter(([k]) => k !== o.status && !(k === "nowa" && o.status === "nowa")).map(([k, l]) => `<button data-st="${k}">${l}</button>`).join("")}
-    </div>
-    ${hist ? `<div class="warn">Już aplikowałeś do tej firmy: ${hist}</div>` : ""}
-    <div class="note"><input placeholder="Notatka (zapis po wyjściu z pola)" value="${esc(o.note)}"></div>
-  </div>`;
+  const label = o.status === "nowa" ? (o.fresh ? "Nowa" : "Nieprzejrzana") : o.status === "aplikowalem" ? `Aplikowałeś ${day(o.status_at)}` : STATUS_LABEL[o.status];
+  const acts = [["przejrzana", "👁", "Przejrzana"], ["aplikowalem", "✓", "Aplikowałem"], ["nie_interesuje", "✕", "Nie interesuje"], ["nowa", "↺", "Przywróć jako nową"]]
+    .filter(([k]) => k !== o.status)
+    .map(([k, i, t]) => `<button class="ic ${k === "aplikowalem" ? "go" : ""}" data-st="${k}" title="${t}" aria-label="${t}">${i}</button>`).join("");
+  return `<tr class="st-${o.status} ${o.status === "nowa" && o.fresh ? "fresh" : ""}" data-g="${o.guid}">
+    <td><div class="who">${avatar(o.company)}<div><a class="t" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>
+      <div class="co">${esc(o.company)}</div>
+      ${hist ? `<span class="wn">⚠ Już aplikowałeś do tej firmy: ${hist}</span>` : ""}
+      ${o.note ? `<span class="nt">✎ ${esc(o.note)}</span>` : ""}</div></div></td>
+    <td><span class="cat">${esc(catLabel(o.category))}</span></td>
+    <td>${esc(o.city)}<div class="co">${esc(o.workplace)} · ${esc(o.experience)}</div></td>
+    <td class="sal">${o.salary ? esc(o.salary).replace(" · ", "<br>") : `<span class="co">brak widełek</span>`}</td>
+    <td><span class="pill p-${o.status}">${label}</span></td>
+    <td class="ago" title="${fmt(o.published_at)}">${ago(o.published_at)}</td>
+    <td><div class="acts">${acts}<button class="ic" data-note="${esc(o.note)}" title="Notatka" aria-label="Notatka">✎</button></div></td>
+  </tr>`;
+}
+
+async function editNote(guid, current) {
+  const note = prompt("Notatka do oferty (puste = usuń):", current);
+  if (note === null) return;
+  await api(`/api/offers/${guid}/note`, {method: "POST", body: {note}});
+  toast("Notatka zapisana"); render();
 }
 
 async function setStatus(guid, status) {
@@ -214,22 +427,21 @@ async function setStatus(guid, status) {
 async function renderApplications() {
   const rows = await api("/api/applications");
   const src = {reczna: "ręcznie", historia: "z historii", brave: "z historii", oferta: "z listy ofert", wtyczka: "z wtyczki"};
-  $("#view").innerHTML = `<h2>Moje aplikacje</h2>
-    <p class="hint">Wszystkie miejsca, do których wysłałeś CV. Z tej listy powstaje ostrzeżenie „już aplikowałeś do tej firmy”.</p>
+  $("#view").innerHTML = `<p class="hint">Wszystkie miejsca, do których wysłałeś CV. Z tej listy powstaje ostrzeżenie „już aplikowałeś do tej firmy”.</p>
     <form class="add" id="add">
       <input name="company" placeholder="Firma *" required>
       <input name="title" placeholder="Stanowisko">
       <input name="url" placeholder="Link do oferty">
       <input name="applied_at" type="date" value="${today()}" required>
       <input name="note" placeholder="Notatka">
-      <button class="on">Dodaj aplikację</button>
+      <button class="primary">Dodaj aplikację</button>
     </form>
-    <table><tr><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Źródło</th><th>Notatka</th><th></th></tr>
-    ${rows.map((a) => `<tr><td>${day(a.applied_at)}</td><td><b>${esc(a.company)}</b></td>
+    ${rows.length ? `<div class="surface tablewrap"><table><thead><tr><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Źródło</th><th>Notatka</th><th></th></tr></thead><tbody>
+    ${rows.map((a) => `<tr><td>${day(a.applied_at)}</td><td><div class="who">${avatar(a.company)}<b>${esc(a.company)}</b></div></td>
       <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title || a.url)}</a>` : esc(a.title)}</td>
-      <td>${src[a.source] || a.source}</td><td>${esc(a.note)}</td>
-      <td><button class="danger" data-del="${a.id}">Usuń</button></td></tr>`).join("")}
-    </table>`;
+      <td class="co">${src[a.source] || a.source}</td><td>${esc(a.note)}</td>
+      <td><button class="btn danger" data-del="${a.id}">Usuń</button></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="surface empty">Jeszcze nic tu nie ma. Dodaj aplikację powyżej albo zaimportuj ją z historii przeglądarki.</div>`}`;
   $("#add").onsubmit = async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target));
@@ -243,25 +455,24 @@ async function renderApplications() {
 }
 
 async function renderHistory() {
-  $("#view").innerHTML = `<div class="empty">Czytam kopię historii przeglądarek…</div>`;
+  $("#view").innerHTML = `<div class="surface empty"><span class="spin"></span> Czytam kopię historii przeglądarek…</div>`;
   let data;
-  try { data = await api("/api/history/candidates"); } catch (e) { $("#view").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  try { data = await api("/api/history/candidates"); } catch (e) { $("#view").innerHTML = `<div class="surface empty">${esc(e.message)}</div>`; return; }
   const kinds = {wyslana: "Wysłana (strona „dziękujemy”)", formularz: "Otwarty formularz", obejrzana: "Tylko obejrzana"};
-  $("#view").innerHTML = `<h2>Import z historii przeglądarek</h2>
-    <p class="hint">Przeglądarki: ${esc(data.browsers.join(", "))} · profile: ${data.profiles}. Zaznacz pozycje, do których naprawdę wysłałeś CV, i popraw firmę lub stanowisko.
-    Kliknięcie „Zapisz” doda zaznaczone do „Moich aplikacji”, a niezaznaczone oznaczy jako sprawdzone, więc nie pojawią się ponownie.
+  $("#view").innerHTML = `<p class="hint">Przeglądarki: ${esc(data.browsers.join(", "))} · profile: ${data.profiles}. Zaznacz pozycje, do których naprawdę wysłałeś CV, i popraw firmę lub stanowisko.
+    „Zapisz” doda zaznaczone do „Moich aplikacji”, a niezaznaczone oznaczy jako sprawdzone, więc nie pojawią się ponownie.
     Pozycje „tylko obejrzana” są z ostatnich 60 dni.</p>
-    ${data.items.length ? `<table><tr><th></th><th>Ślad</th><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Link</th></tr>
+    ${data.items.length ? `<div class="surface tablewrap"><table><thead><tr><th></th><th>Ślad</th><th>Data</th><th>Firma</th><th>Stanowisko</th><th>Link</th></tr></thead><tbody>
     ${data.items.map((c, i) => `<tr data-i="${i}">
-      <td><input type="checkbox" ${c.kind === "wyslana" ? "checked" : ""}></td>
+      <td><input type="checkbox" ${c.kind === "wyslana" ? "checked" : ""} aria-label="Zapisz jako aplikację"></td>
       <td class="k-${c.kind}">${kinds[c.kind]}</td>
       <td><input name="applied_at" type="date" value="${c.date}"></td>
       <td><input name="company" value="${esc(c.company)}" placeholder="uzupełnij"></td>
       <td><input name="title" value="${esc(c.title)}"></td>
       <td><a href="${esc(c.url)}" target="_blank" rel="noopener">otwórz</a>
         ${c.evidence.length ? `<details><summary>ślady</summary><div>${c.evidence.map(esc).join("<br>")}</div></details>` : ""}</td>
-    </tr>`).join("")}</table>
-    <p><button class="primary" id="save">Zapisz</button></p>` : `<div class="empty">Nic nowego w historii — wszystko już sprawdzone.</div>`}`;
+    </tr>`).join("")}</tbody></table></div>
+    <p><button class="primary" id="save">Zapisz</button></p>` : `<div class="surface empty">Nic nowego w historii — wszystko już sprawdzone.</div>`}`;
   const save = $("#save");
   if (!save) return;
   save.onclick = async () => {
@@ -285,29 +496,32 @@ async function renderSettings() {
   const c = d.config;
   const box = (name, k, label, on) => `<label><input type="checkbox" name="${name}" value="${esc(k)}" ${on ? "checked" : ""}>${esc(label)}</label>`;
   const small = Object.keys(d.cities).filter((k) => !d.big_cities.includes(k));
-  $("#view").innerHTML = `<h2>Ustawienia</h2>
-    <p class="hint">Zapisywane do pliku <b>config.toml</b> w folderze programu (można go też edytować ręcznie). Po zapisaniu kliknij „Odśwież oferty”.</p>
+  const cur = document.documentElement.dataset.theme;
+  $("#view").innerHTML = `<p class="hint">Zapisywane do pliku <b>config.toml</b> w folderze programu (można go też edytować ręcznie). Po zapisaniu kliknij „Odśwież oferty”.</p>
+    <div class="surface panel"><h3>Wygląd</h3><p class="hint">Zapamiętywany w tej przeglądarce. To samo przełączysz kafelkami w lewym dolnym rogu.</p>
+      <div class="row">${THEMES.map(([k, l]) => `<label><input type="radio" name="theme" value="${k}" ${cur === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>
     <form id="settings">
-    <div class="panel"><h3>Kategorie</h3>
+    <div class="surface panel"><h3>Kategorie</h3>
       <div class="grid">${Object.entries(d.categories).map(([k, l]) => box("categories", k, l, c.categories.includes(k))).join("")}</div></div>
-    <div class="panel"><h3>Miasta</h3><p class="hint">Oferty stacjonarne i hybrydowe z tych miejsc.</p>
+    <div class="surface panel"><h3>Miasta</h3><p class="hint">Oferty stacjonarne i hybrydowe z tych miejsc.</p>
       <div class="grid">${d.big_cities.map((k) => box("cities", k, d.cities[k], c.cities.includes(k))).join("")}</div>
       <details ${small.some((k) => c.cities.includes(k)) ? "open" : ""}><summary style="margin-top:10px">Mniejsze miasta</summary>
       <div class="grid">${small.map((k) => box("cities", k, d.cities[k], c.cities.includes(k))).join("")}</div></details>
       <div class="row"><label>Promień: <input type="number" name="radius_km" min="0" max="500" value="${c.radius_km}" style="width:80px"> km</label>
         <span class="hint" style="margin:0">0 = tylko same miasta. Promień łapie też oferty z „Gdansk” bez polskich znaków.</span></div></div>
-    <div class="panel"><h3>Tryb pracy i doświadczenie</h3>
+    <div class="surface panel"><h3>Tryb pracy i doświadczenie</h3>
       <div class="row">${box("remote", "1", "Praca w pełni zdalna z całej Polski", c.remote)}${box("only_poland", "1", "Tylko oferty z Polski", c.only_poland)}</div>
       <div class="row">${Object.entries(d.experience).map(([k, l]) => box("experience", k, l, c.experience.includes(k))).join("")}
         <span class="hint" style="margin:0">nic nie zaznaczone = wszystkie poziomy</span></div></div>
-    <div class="panel"><h3>Filtry</h3><p class="hint">Słowa i firmy oddzielaj przecinkami.</p>
+    <div class="surface panel"><h3>Filtry</h3><p class="hint">Słowa i firmy oddzielaj przecinkami.</p>
       <label>Stanowisko musi zawierać jedno z:<textarea name="include_keywords" placeholder="np. backend, developer">${esc(c.include_keywords.join(", "))}</textarea></label>
       <label>Pomijaj stanowiska ze słowami:<textarea name="exclude_keywords" placeholder="np. intern, staż, lead">${esc(c.exclude_keywords.join(", "))}</textarea></label>
       <label>Pomijaj firmy:<textarea name="exclude_companies" placeholder="np. Firma A, Firma B">${esc(c.exclude_companies.join(", "))}</textarea></label></div>
-    <div class="panel"><h3>Zaawansowane</h3>
+    <div class="surface panel"><h3>Zaawansowane</h3>
       <div class="row"><label>Port programu: <input type="number" name="port" min="1024" max="65535" value="${c.port}" style="width:100px"></label>
       <span class="hint" style="margin:0">zmiana wymaga ponownego uruchomienia programu i ustawienia tego samego portu w opcjach wtyczki</span></div></div>
     <p><button class="primary">Zapisz ustawienia</button></p></form>`;
+  document.querySelectorAll("[name=theme]").forEach((r) => r.onchange = () => setTheme(r.value));
   $("#settings").onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -331,22 +545,22 @@ async function renderExtension() {
   const d = await api("/api/extension");
   const v = extVersion();
   const browsers = [["Brave", "brave://extensions"], ["Chrome", "chrome://extensions"], ["Edge", "edge://extensions"], ["Opera", "opera://extensions"], ["Vivaldi", "vivaldi://extensions"]];
-  $("#view").innerHTML = `<h2>Wtyczka do przeglądarki</h2>
-    <div class="panel">${v ? `<span class="ok">✓ Wtyczka działa w tej przeglądarce (wersja ${esc(v)})</span>${v !== d.version ? ` — dostępna nowsza wersja ${esc(d.version)}: przeładuj ją na stronie rozszerzeń.` : ""}`
+  $("#view").innerHTML = `
+    <div class="surface panel">${v ? `<span class="ok">✓ Wtyczka działa w tej przeglądarce (wersja ${esc(v)})</span>${v !== d.version ? ` — dostępna nowsza wersja ${esc(d.version)}: przeładuj ją na stronie rozszerzeń.` : ""}`
       : `<span class="no">Wtyczka nie jest zainstalowana w tej przeglądarce.</span>`}
       <p class="hint" style="margin-bottom:0">Na stronie oferty justjoin.it wtyczka pokazuje pasek: zielony — już aplikowałeś na tę ofertę, żółty — aplikowałeś do tej firmy na inne stanowisko.
       Po kliknięciu „Aplikuj / Apply” zapyta, czy zapisać aplikację. Działa, gdy program didIJJIT jest uruchomiony.</p></div>
-    <div class="panel"><h3>Brave, Chrome, Edge, Opera, Vivaldi</h3><ol>
+    <div class="surface panel"><h3>Brave, Chrome, Edge, Opera, Vivaldi</h3><ol>
       <li>Otwórz stronę rozszerzeń (wklej adres w pasek przeglądarki): ${browsers.map(([n, u]) => `${n} <code>${u}</code>`).join(", ")}.</li>
       <li>Włącz <b>Tryb dewelopera</b> (Developer mode).</li>
       <li>Kliknij <b>Załaduj rozpakowane</b> (Load unpacked) i wskaż folder:
-        <code class="path" id="extpath">${esc(d.path)}</code><button id="copy">Kopiuj ścieżkę</button></li>
+        <code class="path">${esc(d.path)}</code><button class="btn" id="copy">Kopiuj ścieżkę</button></li>
       <li>Wróć tutaj i odśwież stronę — przy zakładce „Wtyczka” pojawi się ✓.</li></ol></div>
-    <div class="panel"><h3>Firefox (121+)</h3><ol>
+    <div class="surface panel"><h3>Firefox (121+)</h3><ol>
       <li>Otwórz <code>about:debugging#/runtime/this-firefox</code> → <b>Załaduj tymczasowy dodatek</b> → wskaż plik <code>manifest.json</code> w folderze powyżej.</li>
       <li>W <code>about:addons</code> → didIJJIT → <b>Uprawnienia</b> zezwól na justjoin.it i localhost.</li>
       <li>Firefox usuwa tymczasowe dodatki po zamknięciu przeglądarki.</li></ol></div>
-    <div class="panel"><h3>Inny komputer?</h3><p class="hint" style="margin:0">Pobierz wtyczkę jako ZIP, rozpakuj i wskaż rozpakowany folder:
+    <div class="surface panel"><h3>Inny komputer?</h3><p class="hint" style="margin:0">Pobierz wtyczkę jako ZIP, rozpakuj i wskaż rozpakowany folder:
       <a href="/didIJJIT-extension.zip">didIJJIT-extension-${esc(d.version)}.zip</a></p></div>`;
   $("#copy").onclick = () => navigator.clipboard.writeText(d.path).then(() => toast("Skopiowano ścieżkę"), () => toast("Zaznacz ścieżkę i skopiuj ręcznie"));
 }
@@ -372,10 +586,11 @@ async function doRefresh() {
   try { const r = await api("/api/refresh", {method: "POST"}); toast(`Pobrano ${r.fetched} ofert, nowych: ${r.added}`); }
   catch (e) { toast(e.message); }
   clearInterval(tick); box.classList.remove("on"); $("#loading-time").textContent = "0 s";
-  b.disabled = false; b.textContent = "Odśwież oferty";
+  b.disabled = false; b.textContent = "⟳ Odśwież oferty";
   await loadSummary(); render();
 }
 $("#refresh").onclick = doRefresh;
+$("#q").oninput = (e) => { query = e.target.value; clearTimeout(e.target._h); e.target._h = setTimeout(render, 250); };
 
 api("/api/settings").then((d) => { meta = d; }).catch(() => {}).finally(() => loadSummary().then(render));
 </script>
