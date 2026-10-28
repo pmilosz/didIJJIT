@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "didIJJIT",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Na justjoin.it pokazuje, czy już aplikowałeś do firmy, i pozwala zapisać wysłane CV w lokalnym programie didIJJIT.",
   "host_permissions": [
     "https://justjoin.it/*",

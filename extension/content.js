@@ -9,16 +9,46 @@
   const send = (msg) => new Promise((res) => chrome.runtime.sendMessage(msg, (r) => res(r || { ok: false, offline: true })));
   const day = (iso) => new Date(iso.length === 10 ? iso + "T12:00" : iso).toLocaleDateString("pl-PL");
 
+  const offerPath = () => location.pathname.split("/").slice(0, 3).join("/");
+
+  // dane strukturalne JobPosting — najpewniejsze źródło nazwy firmy
+  function jsonLd() {
+    for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const d = JSON.parse(s.textContent);
+        const items = Array.isArray(d) ? d : d["@graph"] || [d];
+        const job = items.find((x) => x && x["@type"] === "JobPosting");
+        if (job) return { title: job.title || "", company: job.hiringOrganization?.name || "" };
+      } catch {}
+    }
+    return null;
+  }
+
   // tytuł karty ma postać „Stanowisko - Firma”, czasem z dopiskiem po „|”
-  function pageInfo() {
-    const raw = document.title.split(" | ")[0];
+  function fromTitle(text) {
+    const raw = (text || "").split(" | ")[0];
     const i = raw.lastIndexOf(" - ");
+    return i > 0 ? { title: raw.slice(0, i).trim(), company: raw.slice(i + 3).trim() } : null;
+  }
+
+  function pageInfo() {
     const h1 = document.querySelector("h1")?.textContent?.trim();
-    return {
-      url: location.origin + location.pathname,
-      title: h1 || (i > 0 ? raw.slice(0, i) : raw),
-      company: i > 0 ? raw.slice(i + 3).trim() : "",
+    const ld = jsonLd();
+    const og = document.querySelector('meta[property="og:title"]')?.content;
+    // po przejściu między ofertami bez przeładowania JSON-LD bywa jeszcze z poprzedniej oferty
+    const ldOk = ld?.company && (!h1 || !ld.title || ld.title.trim() === h1);
+    const t = fromTitle(document.title) || fromTitle(og);
+    const info = {
+      url: location.origin + offerPath(),
+      title: h1 || t?.title || "",
+      company: (ldOk && ld.company) || t?.company || "",
     };
+    // ta sama oferta (np. otwarty formularz aplikacji) — nie gubimy rozpoznanej wcześniej firmy
+    if (current && current.url === info.url) {
+      info.company ||= current.company;
+      info.title ||= current.title;
+    }
+    return info;
   }
 
   function bar() {
@@ -72,8 +102,10 @@
   }
 
   async function markApplied() {
+    current = pageInfo();
     if (!current.company) {
-      const c = prompt("Nazwa firmy:", "");
+      // ostateczność: strona nie podała nazwy firmy w żadnym znanym miejscu
+      const c = prompt("didIJJIT nie rozpoznał nazwy firmy na tej stronie.\nWpisz ją, żeby zapisać aplikację:", "");
       if (!c) return;
       current.company = c;
     }
