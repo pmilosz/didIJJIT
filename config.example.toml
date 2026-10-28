@@ -1,37 +1,128 @@
-# didIJJIT — ustawienia. Skopiuj ten plik jako config.toml i zmień pod siebie.
+# didIJJIT — ustawienia. Program przy pierwszym starcie kopiuje ten plik jako config.toml.
 # Zmiany działają po ponownym uruchomieniu programu i kliknięciu „Odśwież oferty”.
+#
+# JAK WYBIERAĆ: w listach poniżej usuń „#” przed pozycją, żeby ją włączyć,
+# albo dopisz „#” na początku, żeby wyłączyć. Przecinki zostaw, jak są.
 
 [justjoin]
-# Kategorie z adresów justjoin.it, np. justjoin.it/job-offers/all-locations/python → "python".
-# Przykłady: ai, python, php, javascript, java, net, go, mobile, data, devops, testing,
-# security, analytics, pm, ux, admin, support, erp, architecture, game, c, ruby, scala, html, other
-categories = ["ai", "php", "python"]
+# Technologie / kategorie justjoin.it (trzeba wybrać co najmniej jedną).
+categories = [
+  # "admin",              # Administracja systemami
+  "ai",                   # AI / ML
+  # "analytics",          # Analityka biznesowa i systemowa
+  # "architecture",       # Architektura
+  # "c",                  # C / C++
+  # "data",               # Data / Big Data
+  # "devops",             # DevOps / Cloud
+  # "erp",                # ERP / SAP / CRM
+  # "game",               # Gamedev
+  # "go",                 # Go
+  # "html",               # HTML / CSS
+  # "java",               # Java / Kotlin
+  # "javascript",         # JavaScript / frontend
+  # "mobile",             # Mobile
+  # "net",                # .NET / C#
+  # "other",              # Inne
+  "php",                  # PHP
+  # "pm",                 # Project / Product Management
+  "python",               # Python
+  # "ruby",               # Ruby
+  # "scala",              # Scala
+  # "security",           # Bezpieczeństwo
+  # "support",            # Wsparcie IT
+  # "testing",            # Testowanie / QA
+  # "ux",                 # UX / UI
+]
 
-# Miasta z adresów justjoin.it, np. justjoin.it/job-offers/trojmiasto → "trojmiasto".
-# Przykłady: trojmiasto, warszawa, krakow, wroclaw, poznan, lodz, katowice, slask. Pusta lista = bez ofert stacjonarnych.
-cities = ["trojmiasto"]
+# Miasta: oferty stacjonarne i hybrydowe z tych miejsc. Pusta lista = tylko praca zdalna (jeśli remote = true).
+cities = [
+  # "warszawa",           # Warszawa
+  # "krakow",             # Kraków
+  # "wroclaw",            # Wrocław
+  "trojmiasto",           # Trójmiasto (aglomeracja)
+  # "poznan",             # Poznań
+  # "lodz",               # Łódź
+  # "slask",              # Śląsk (aglomeracja)
+  # "lublin",             # Lublin
+  # "rzeszow",            # Rzeszów
+  # "szczecin",           # Szczecin
+  # "bydgoszcz",          # Bydgoszcz
+  # "torun",              # Toruń
+  # "bialystok",          # Białystok
+  # "olsztyn",            # Olsztyn
+  # "kielce",             # Kielce
+  # "opole",              # Opole
+  # "gdansk",             # Gdańsk
+  # "gdynia",             # Gdynia
+  # "katowice",           # Katowice
+  # mniejsze miasta:
+  # "gliwice",            # Gliwice
+  # "sosnowiec",          # Sosnowiec
+  # "tychy",              # Tychy
+  # "rybnik",             # Rybnik
+  # "bielsko-biala",      # Bielsko-Biała
+  # "zielona-gora",       # Zielona Góra
+  # "gorzow-wielkopolski",# Gorzów Wielkopolski
+  # "czestochowa",        # Częstochowa
+  # "radom",              # Radom
+  # "plock",              # Płock
+  # "elblag",             # Elbląg
+  # "slupsk",             # Słupsk
+  # "koszalin",           # Koszalin
+  # "kwidzyn",            # Kwidzyn
+  # "wloclawek",          # Włocławek
+  # "kalisz",             # Kalisz
+  # "konin",              # Konin
+  # "gniezno",            # Gniezno
+  # "legnica",            # Legnica
+  # "walbrzych",          # Wałbrzych
+  # "tarnow",             # Tarnów
+  # "nowy-sacz",          # Nowy Sącz
+  # "mielec",             # Mielec
+  # "stalowa-wola",       # Stalowa Wola
+  # "krosno",             # Krosno
+  # "przemysl",           # Przemyśl
+  # "zamosc",             # Zamość
+  # "siedlce",            # Siedlce
+  # "lomza",              # Łomża
+  # "stargard",           # Stargard
+]
 
-# Dołącz oferty w pełni zdalne z całego kraju.
+# Promień w km wokół wybranych miast, np. 30 = także Pruszcz, Rumia czy Wejherowo dla Trójmiasta.
+# 0 = tylko oferty przypisane do samych miast. Promień łapie też oferty z nazwą miasta wpisaną
+# bez polskich znaków (np. „Gdansk”), które justjoin.it pomija przy wyszukiwaniu po mieście — warto ustawić choćby 10. Przy promieniu odświeżanie trwa dłużej,
+# bo program pobiera oferty z całej Polski i sam liczy odległość.
+radius_km = 0
+
+# Dołącz oferty w pełni zdalne z całego kraju (true = tak, false = nie).
 remote = true
 
 # Pomijaj oferty, których żadna lokalizacja nie leży w Polsce.
 only_poland = true
 
-# Poziomy doświadczenia: junior, mid, senior, c_level. Pusta lista = wszystkie.
-experience = []
+# Poziom doświadczenia. Pusta lista = wszystkie.
+experience = [
+  # "junior",
+  # "mid",
+  # "senior",
+  # "c_level",
+]
 
 [filters]
-# Stanowisko musi zawierać przynajmniej jedno z tych słów (bez rozróżniania wielkości liter). Pusta lista = wszystkie.
+# Stanowisko musi zawierać przynajmniej jedno z tych słów (wielkość liter bez znaczenia). Pusta lista = wszystkie.
+# Przykład: include_keywords = ["backend", "developer", "engineer"]
 include_keywords = []
 
 # Pomijaj oferty, których stanowisko zawiera któreś z tych słów.
+# Przykład: exclude_keywords = ["intern", "staż", "lead"]
 exclude_keywords = []
 
 # Pomijaj firmy (porównanie bez „sp. z o.o.”, „Polska” itp.).
+# Przykład: exclude_companies = ["Firma A", "Firma B"]
 exclude_companies = []
 
 [history]
-# Przeglądarki przeszukiwane przy imporcie historii: brave, chrome, edge, chromium, opera, vivaldi, firefox.
+# Przeglądarki przeszukiwane przy imporcie historii.
 browsers = ["brave", "chrome", "edge", "chromium", "opera", "vivaldi", "firefox"]
 
 # Dodatkowe katalogi z danymi przeglądarki, jeśli program sam ich nie znajdzie

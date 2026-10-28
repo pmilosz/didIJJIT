@@ -18,6 +18,7 @@ EXAMPLE_PATH = ROOT / "config.example.toml"
 class Config:
     categories: list[str] = field(default_factory=lambda: ["ai", "php", "python"])
     cities: list[str] = field(default_factory=lambda: ["trojmiasto"])
+    radius_km: int = 0
     remote: bool = True
     only_poland: bool = True
     experience: list[str] = field(default_factory=list)

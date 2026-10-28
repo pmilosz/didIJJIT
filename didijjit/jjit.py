@@ -1,13 +1,16 @@
 """Pobieranie ofert z publicznego API listy ofert justjoin.it."""
+import math
+
 import httpx
 
 from .config import Config
 from .db import company_key
+from .places import CATEGORIES, CITIES
 
 API = "https://justjoin.it/api/candidate-api/offers"
 OFFER_URL = "https://justjoin.it/job-offer/{slug}"
 PAGE = 100
-MAX_PAGES = 20
+MAX_PAGES = 60
 HEADERS = {"User-Agent": "Mozilla/5.0 (didIJJIT; prywatne narzedzie)", "Accept": "application/json"}
 # prostokąt obejmujący Polskę — API nie podaje kraju, tylko współrzędne
 POLAND = (49.0, 54.9, 14.1, 24.2)
@@ -67,9 +70,41 @@ def matches(raw: dict, cfg: Config) -> bool:
     return company_key(raw.get("companyName") or "") not in excluded
 
 
+def validate(cfg: Config) -> None:
+    """Literówka w slugu dałaby po cichu zero ofert — lepiej powiedzieć wprost."""
+    bad_cat = [c for c in cfg.categories if c not in CATEGORIES]
+    bad_city = [c for c in cfg.cities if c not in CITIES]
+    if bad_cat:
+        raise ValueError(f"Nieznane kategorie w config.toml: {', '.join(bad_cat)}. Dozwolone: {', '.join(CATEGORIES)}")
+    if bad_city:
+        raise ValueError(f"Nieznane miasta w config.toml: {', '.join(bad_city)}. Dozwolone: {', '.join(CITIES)}")
+    if not cfg.categories:
+        raise ValueError("W config.toml nie wybrano żadnej kategorii")
+
+
+def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(a))
+
+
+def near(raw: dict, cfg: Config) -> bool:
+    """Czy któraś lokalizacja oferty leży w promieniu radius_km od któregoś z wybranych miast."""
+    points = raw.get("locations") or [raw]
+    centers = [CITIES[c][1:] for c in cfg.cities]
+    return any(
+        _km(p.get("latitude") or 0, p.get("longitude") or 0, lat, lon) <= cfg.radius_km
+        for p in points for lat, lon in centers
+    )
+
+
 def queries(cfg: Config) -> list[dict]:
-    # API przyjmuje jedno miasto na zapytanie
-    q = [{"city": c} for c in cfg.cities]
+    if cfg.cities and cfg.radius_km > 0:
+        # API nie zna promienia: bierzemy całą Polskę i liczymy odległość sami
+        q = [{}]
+    else:
+        # API przyjmuje jedno miasto na zapytanie
+        q = [{"city": c} for c in cfg.cities]
     if cfg.remote:
         q.append({"isRemote": "true"})
     return q
@@ -77,6 +112,7 @@ def queries(cfg: Config) -> list[dict]:
 
 def fetch_all(cfg: Config, client: httpx.Client | None = None) -> list[dict]:
     """Zwraca wszystkie pasujące oferty ze wszystkich zapytań, bez duplikatów."""
+    validate(cfg)
     own = client is None
     client = client or httpx.Client(timeout=30, headers=HEADERS)
     found: dict[str, dict] = {}
@@ -94,6 +130,8 @@ def fetch_all(cfg: Config, client: httpx.Client | None = None) -> list[dict]:
                 resp.raise_for_status()
                 body = resp.json()
                 for raw in body.get("data", []):
+                    if extra == {} and not near(raw, cfg):
+                        continue
                     if raw["guid"] not in found and matches(raw, cfg):
                         found[raw["guid"]] = normalize(raw)
                 nxt = (body.get("meta") or {}).get("next") or {}

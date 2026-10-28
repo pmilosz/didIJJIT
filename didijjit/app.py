@@ -76,7 +76,8 @@ def summary():
         "counts": counts,
         "applications": apps,
         "last_refresh": dict(last) if last else None,
-        "config": {"source": cfg.source, "categories": cfg.categories, "cities": cfg.cities, "remote": cfg.remote},
+        "config": {"source": cfg.source, "categories": cfg.categories, "cities": cfg.cities, "radius_km": cfg.radius_km,
+                   "remote": cfg.remote},
     }
 
 
@@ -84,6 +85,8 @@ def summary():
 def refresh():
     try:
         fetched = jjit.fetch_all(config.load())
+    except ValueError as exc:  # błąd w config.toml
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:  # błąd sieci albo zmiana API po stronie justjoin.it
         raise HTTPException(502, f"Nie udało się pobrać ofert z justjoin.it: {exc}") from exc
     now = _now()

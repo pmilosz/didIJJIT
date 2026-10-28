@@ -173,3 +173,26 @@ def test_lookup_treats_same_title_in_other_category_as_this_offer(client):
         conn.execute("update offers set title = 'Senior Python AI Engineer' where guid = 'g2'")
     d = client.get("/api/lookup", params={"url": "https://justjoin.it/job-offer/globex-ml-engineer-gdynia-ai"}).json()
     assert d["applied_here"]["title"] == "Senior Python AI Engineer"
+
+
+def test_radius_uses_whole_country_query_and_distance():
+    cfg = config.Config(cities=["trojmiasto"], radius_km=40, remote=False)
+    assert jjit.queries(cfg) == [{}]
+    assert jjit.near(_raw(locations=[{"latitude": 54.60, "longitude": 18.23}]), cfg)  # Wejherowo, ok. 30 km
+    assert not jjit.near(_raw(locations=[{"latitude": 54.16, "longitude": 19.40}]), cfg)  # Elbląg, ok. 60 km
+    assert jjit.queries(config.Config(cities=["trojmiasto"], radius_km=0)) == [{"city": "trojmiasto"}, {"isRemote": "true"}]
+
+
+def test_validate_rejects_typos():
+    with pytest.raises(ValueError, match="pyhton"):
+        jjit.validate(config.Config(categories=["pyhton"]))
+    with pytest.raises(ValueError, match="gdanks"):
+        jjit.validate(config.Config(cities=["gdanks"]))
+    jjit.validate(config.load(config.EXAMPLE_PATH))
+
+
+def test_example_lists_every_category_and_city():
+    from didijjit.places import CATEGORIES, CITIES
+    text = config.EXAMPLE_PATH.read_text(encoding="utf-8")
+    assert all(f'"{c}",' in text for c in CATEGORIES)
+    assert all(f'"{c}",' in text for c in CITIES)

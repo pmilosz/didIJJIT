@@ -43,25 +43,37 @@ Zatrzymanie: zamknij okno albo naciśnij `Ctrl+C`.
 
 ## 2. Ustawienia — jakie oferty Cię interesują
 
-Przy pierwszym uruchomieniu powstaje plik **`config.toml`** (kopia `config.example.toml`). Otwórz go w Notatniku lub innym edytorze:
+Przy pierwszym uruchomieniu powstaje plik **`config.toml`** (kopia `config.example.toml`). Otwórz go w Notatniku lub innym edytorze.
+Są w nim **wszystkie kategorie justjoin.it i wszystkie miasta**. Nic nie trzeba szukać, wystarczy włączyć lub wyłączyć `#` na początku linii:
 
 ```toml
-[justjoin]
-categories = ["ai", "php", "python"]   # technologie
-cities = ["trojmiasto"]                # miasta (oferty stacjonarne i hybrydowe)
-remote = true                          # plus praca w pełni zdalna z całej Polski
-only_poland = true                     # bez ofert zagranicznych
-experience = []                        # np. ["mid", "senior"]; pusto = wszystkie
+categories = [
+  # "admin",              # Administracja systemami
+  "ai",                   # AI / ML          ← włączone
+  # "java",               # Java / Kotlin    ← wyłączone
+  "python",               # Python
+  ...
+]
 
-[filters]
-include_keywords = []                  # np. ["backend", "developer"]
-exclude_keywords = []                  # np. ["intern", "junior", "lead"]
-exclude_companies = []                 # firmy, których nie chcesz widzieć
+cities = [
+  # "warszawa",           # Warszawa
+  "trojmiasto",           # Trójmiasto (aglomeracja)
+  ...
+]
+
+radius_km = 20            # także oferty w promieniu 20 km od wybranych miast
+remote = true             # plus praca w pełni zdalna z całej Polski
+only_poland = true        # bez ofert zagranicznych
 ```
 
-**Skąd wziąć nazwy?** Z adresów na justjoin.it:
-`justjoin.it/job-offers/warszawa/python` → miasto `"warszawa"`, kategoria `"python"`.
-Pełna lista przykładów jest w komentarzach w `config.example.toml`.
+Do tego poziom doświadczenia (`junior`, `mid`, `senior`, `c_level`) oraz filtry: słowa wymagane w stanowisku,
+słowa wykluczające (np. `"intern"`) i firmy do ukrycia. Każde ustawienie ma w pliku opis i przykład.
+
+**Promień (`radius_km`)**: justjoin.it nie umie szukać „w promieniu”, więc liczy go didIJJIT na podstawie współrzędnych ofert.
+Przy promieniu większym niż 0 odświeżanie pobiera oferty z całej Polski, przez co trwa kilka sekund dłużej.
+Dodatkowy plus: promień łapie oferty z nazwą miasta wpisaną bez polskich znaków (np. „Gdansk”), które zwykłe wyszukiwanie po mieście pomija.
+
+Literówka w nazwie kategorii lub miasta nie przejdzie po cichu: przy odświeżaniu program pokaże, czego nie zna, i poda poprawne nazwy.
 
 Po zmianie ustawień uruchom program ponownie i kliknij **Odśwież oferty**.
 Oferty, które przestały pasować, znikną, chyba że nadałeś im status albo dodałeś notatkę.

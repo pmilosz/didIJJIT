@@ -95,7 +95,7 @@ async function loadSummary() {
   summary = await api("/api/summary");
   const l = summary.last_refresh;
   const c = summary.config;
-  const scope = `${c.categories.join(", ")} · ${[...c.cities, ...(c.remote ? ["zdalnie"] : [])].join(", ")} (${c.source})`;
+  const scope = `${c.categories.join(", ")} · ${[...c.cities.map((x) => c.radius_km ? `${x} +${c.radius_km} km` : x), ...(c.remote ? ["zdalnie"] : [])].join(", ")} (${c.source})`;
   $("#meta").textContent = (l ? `Ostatnie odświeżenie: ${fmt(l.at)} · pobrano ${l.fetched}, nowych ${l.added}` : "Jeszcze nie pobrano ofert — kliknij „Odśwież oferty”.") + " · " + scope;
   renderNav();
 }
