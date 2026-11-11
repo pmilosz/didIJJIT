@@ -142,6 +142,9 @@ button { font:inherit; cursor:pointer; color:var(--text); }
 .chip.on, .chip.pick.sel { border-style:solid; border-color:var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:600; }
 [data-theme="brutal"] .chip.on, [data-theme="brutal"] .chip.pick.sel { background:#111; color:#ffd23f; border-color:#111; box-shadow:3px 3px 0 var(--accent); }
 .chip em { font-style:normal; margin-left:6px; font-size:12px; opacity:.75; }
+.tools .hideapp { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; }
+.tools .hideapp input { accent-color:var(--accent); }
+.tools .hideapp + select { margin-left:0; }
 .tools select { margin-left:auto; padding:6px 10px; border-radius:8px; border:var(--bw) solid var(--border); background:var(--surface); color:var(--text); font:inherit; font-size:13.5px; }
 [data-theme="aurora"] select option, [data-theme="radar"] select option { background:#111; }
 
@@ -276,7 +279,7 @@ const store = {get: (k, d) => { try { return localStorage.getItem(k) ?? d; } cat
 // adres z #zakładką (np. localhost:8765/#ustawienia) otwiera od razu tę zakładkę
 const VIEWS_ALL = [...OFFER_VIEWS.map((v) => v[0]), ...TOOL_VIEWS.map((v) => v[0])];
 let view = VIEWS_ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("view", "nowe"), query = "", summary = null, meta = null;
-let category = store.get("category", ""), sort = store.get("sort", "najnowsze");
+let category = store.get("category", ""), sort = store.get("sort", "najnowsze"), hideApplied = store.get("hideApplied", "") === "1";
 const extVersion = () => document.documentElement.dataset.didijjitExtension;
 const catLabel = (k) => meta?.categories?.[k] || k;
 const isOfferView = () => OFFER_VIEWS.some((v) => v[0] === view);
@@ -350,7 +353,8 @@ async function render() {
   if (view === "historia") return renderHistory();
   if (view === "ustawienia") return renderSettings();
   if (view === "wtyczka") return renderExtension();
-  const data = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${sort}`);
+  const hide = hideApplied && view !== "aplikowalem";
+  const data = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${sort}&hide_applied=${hide}`);
   const rows = data.offers, cats = data.categories;
   const total = Object.values(cats).reduce((a, b) => a + b, 0);
   const c = summary?.counts || {};
@@ -370,6 +374,7 @@ async function render() {
   const tools = picker + `<div class="tools"><span class="lbl">Pokaż:</span>
     <button class="chip ${category ? "" : "on"}" data-cat="">Wszystkie<em>${total}</em></button>
     ${Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<button class="chip ${category === k ? "on" : ""}" data-cat="${esc(k)}">${esc(catLabel(k))}<em>${n}</em></button>`).join("")}
+    ${view !== "aplikowalem" ? `<label class="hideapp" title="Nie pokazuj ofert firm, do których już wysłałeś CV"><input type="checkbox" id="hideApplied" ${hideApplied ? "checked" : ""}>Ukryj firmy, do których aplikowałem</label>` : ""}
     <select id="sort" title="Sortowanie">
       ${[["najnowsze", "Najnowsze"], ["kategoria", "Wg kategorii"], ["firma", "Wg firmy"], ["miasto", "Wg miasta"]].map(([k, l]) => `<option value="${k}" ${sort === k ? "selected" : ""}>${l}</option>`).join("")}
     </select></div>`;
@@ -381,6 +386,8 @@ async function render() {
   document.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { category = b.dataset.cat; store.set("category", category); render(); });
   document.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => toggleCategory(b.dataset.toggle));
   $("#sort").onchange = (e) => { sort = e.target.value; store.set("sort", sort); render(); };
+  const ha = $("#hideApplied");
+  if (ha) ha.onchange = (e) => { hideApplied = e.target.checked; store.set("hideApplied", hideApplied ? "1" : ""); render(); };
   document.querySelector("[data-hide]")?.addEventListener("click", () => { store.set("hideExtBanner", "1"); render(); });
   document.querySelectorAll("[data-st]").forEach((b) => b.onclick = () => setStatus(b.closest("tr").dataset.g, b.dataset.st));
   document.querySelectorAll("[data-note]").forEach((b) => b.onclick = () => editNote(b.closest("tr").dataset.g, b.dataset.note));
@@ -594,6 +601,28 @@ $("#refresh").onclick = doRefresh;
 $("#q").oninput = (e) => { query = e.target.value; clearTimeout(e.target._h); e.target._h = setTimeout(render, 250); };
 
 api("/api/settings").then((d) => { meta = d; }).catch(() => {}).finally(() => loadSummary().then(render));
+
+// aplikacje zapisane z wtyczki (na karcie justjoin.it) — odświeżamy listę bez przeładowania strony:
+// po powrocie na kartę i co 15 s, gdy karta jest widoczna; tylko gdy coś się zmieniło
+const stamp = () => JSON.stringify([summary?.counts, summary?.applications, summary?.warnings, summary?.last_refresh?.id]);
+let syncing = false;
+async function syncFromServer() {
+  if (syncing || document.hidden || !summary) return;
+  // nie przerywamy pisania w formularzu ani w wyszukiwarce
+  const a = document.activeElement;
+  if (a && a.matches("input:not([type=checkbox]):not([type=radio]), textarea") && a.id !== "q") return;
+  if (!isOfferView() && view !== "aplikacje") return;
+  if (view === "aplikacje" && [...document.querySelectorAll("#view form input")].some((i) => i.type !== "date" && i.value)) return;
+  syncing = true;
+  try {
+    const before = stamp();
+    await loadSummary();
+    if (stamp() !== before) await render();
+  } catch {} finally { syncing = false; }
+}
+document.addEventListener("visibilitychange", syncFromServer);
+window.addEventListener("focus", syncFromServer);
+setInterval(syncFromServer, 15000);
 </script>
 </body>
 </html>

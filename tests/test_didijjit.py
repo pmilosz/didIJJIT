@@ -244,3 +244,14 @@ def test_toggle_category_updates_config(client, tmp_path, monkeypatch):
     assert config.load(path).categories == ["python"]
     assert client.post("/api/categories/toggle", json={"category": "python"}).status_code == 400  # ostatnia
     assert client.post("/api/categories/toggle", json={"category": "pyhton"}).status_code == 400
+
+
+def test_hide_applied_companies(client):
+    client.post("/api/refresh")
+    # obie oferty są z Globexu, a do Globexu już aplikowano
+    d = client.get("/api/offers", params={"view": "aktywne", "hide_applied": "true"}).json()
+    assert d["offers"] == [] and d["categories"] == {}
+    app_id = client.get("/api/applications").json()[0]["id"]
+    client.delete(f"/api/applications/{app_id}")
+    d = client.get("/api/offers", params={"view": "aktywne", "hide_applied": "true"}).json()
+    assert {o["guid"] for o in d["offers"]} == {"g1", "g2"}

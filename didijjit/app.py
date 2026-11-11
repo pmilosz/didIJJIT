@@ -148,7 +148,7 @@ def refresh():
 
 
 @app.get("/api/offers")
-def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "najnowsze"):
+def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "najnowsze", hide_applied: bool = False):
     if view not in VIEWS or sort not in SORTS:
         raise HTTPException(400, "Nieznany widok albo sortowanie")
     with db.session() as conn:
@@ -158,6 +158,9 @@ def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "naj
         if q.strip():
             sql += " and (title like ? or company like ? or city like ?)"
             args += [f"%{q.strip()}%"] * 3
+        if hide_applied:
+            # bez ofert firm, do których już wysłano CV (także tej samej oferty)
+            sql += " and status != 'aplikowalem' and company_key not in (select company_key from applications)"
         # liczniki kategorii liczymy przed zawężeniem do jednej kategorii, żeby zakładki nie znikały
         cats = {r[0]: r[1] for r in conn.execute(f"select category, count(*) from ({sql}) group by category", args)}
         if category:
