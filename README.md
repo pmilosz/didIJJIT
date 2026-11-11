@@ -104,6 +104,10 @@ Nad listą są dwa rzędy guzików:
 - **Pobieraj** — wszystkie kategorie justjoin.it; włączone są podświetlone z ✓. Kliknięcie włącza lub wyłącza kategorię
   i od razu pobiera oferty, bez wchodzenia w Ustawienia.
 - **Pokaż** — filtr listy po kategorii z liczbą ofert (np. „Python 301”), obok **sortowanie**: najnowsze, wg kategorii, firmy albo miasta.
+  Checkbox **Ukryj firmy, do których aplikowałem** chowa oferty firm, do których już wysłałeś CV.
+
+Lista odświeża się sama — aplikacja zapisana wtyczką na justjoin.it pojawi się po powrocie na kartę programu.
+
 Przy każdej ofercie możesz zmienić status i dopisać notatkę.
 Gdy oznaczysz „Aplikowałem”, program zapyta o datę. Od tej chwili każda oferta tej firmy pokaże ostrzeżenie
 „Już aplikowałeś do tej firmy” (nazwy porównywane są bez „sp. z o.o.”, „S.A.”, „Polska” itp.).
@@ -162,6 +166,7 @@ Jeśli zmienisz port w `config.toml`, ustaw ten sam port w opcjach wtyczki.
 
 Pobierz nową wersję i podmień pliki programu, zostawiając `data/` i `config.toml`.
 Przy `git clone` wystarczy `git pull`. Wtyczkę przeładuj na stronie rozszerzeń.
+Co się zmieniło w kolejnych wersjach: [CHANGELOG.md](CHANGELOG.md).
 
 ## Dla programistów
 
