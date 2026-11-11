@@ -3,6 +3,7 @@
   const BAR_ID = "didijjit-bar";
   let lastUrl = "";
   let current = null; // { url, company, title }
+  let askingFor = ""; // adres oferty, dla której wisi pytanie „Wysłałeś CV?”
 
   const isOffer = () => location.pathname.startsWith("/job-offer/");
   // wersja z callbackiem działa tak samo w Chromium i Firefoksie
@@ -82,8 +83,11 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   async function check() {
-    if (!isOffer()) { document.getElementById(BAR_ID)?.remove(); return; }
+    if (!isOffer()) { askingFor = ""; document.getElementById(BAR_ID)?.remove(); return; }
     current = pageInfo();
+    // pytanie po kliknięciu „Aplikuj” ma pierwszeństwo — nie nadpisujemy go zwykłym sprawdzeniem
+    if (askingFor === current.url && document.getElementById(BAR_ID)) return;
+    askingFor = "";
     const r = await send({ type: "lookup", url: current.url, company: current.company });
     if (r.offline) {
       show("off", `nie działa na ${esc(r.base)} — uruchom program, żeby widzieć historię aplikacji.`);
@@ -109,26 +113,45 @@
       if (!c) return;
       current.company = c;
     }
+    askingFor = "";
     const r = await send({ type: "applied", ...current });
     if (r.ok) show("done", `Zapisano: aplikowałeś do <b>${esc(current.company)}</b> dzisiaj.`);
     else show("off", "Nie udało się zapisać — czy program didIJJIT działa?");
   }
 
   // po kliknięciu „Aplikuj” pytamy, czy CV naprawdę poszło — wysłanie dzieje się w formularzu firmy
+  // przycisk „Aplikuj” — także gdy kliknięto ikonę/napis w środku albo element z role="button"
+  function applyButton(e) {
+    for (const n of e.composedPath()) {
+      if (!(n instanceof Element)) continue;
+      if (n.id === BAR_ID) return null; // kliknięcia w nasz własny pasek
+      if (!n.matches('a,button,[role="button"]')) continue;
+      const label = `${n.innerText || n.textContent || ""} ${n.getAttribute("aria-label") || ""} ${n.title || ""}`;
+      return /aplikuj|apply/i.test(label) ? n : null;
+    }
+    return null;
+  }
+
   document.addEventListener("click", (e) => {
-    if (!isOffer()) return;
-    const el = e.target.closest("a,button");
-    if (!el || !/aplikuj|apply/i.test(el.textContent || "")) return;
-    setTimeout(() => show("ask", `Wysłałeś CV do <b>${esc(current?.company || "tej firmy")}</b>?`, [
-      ["Tak, zapisz", markApplied],
-      ["Jeszcze nie", () => document.getElementById(BAR_ID)?.remove()],
-    ]), 400);
+    if (!isOffer() || !applyButton(e)) return;
+    setTimeout(() => {
+      if (!isOffer()) return;
+      if (!current || current.url !== location.origin + offerPath()) current = pageInfo();
+      askingFor = current.url;
+      show("ask", `Wysłałeś CV do <b>${esc(current.company || "tej firmy")}</b>?`, [
+        ["Tak, zapisz", markApplied],
+        ["Jeszcze nie", () => { askingFor = ""; document.getElementById(BAR_ID)?.remove(); }],
+      ]);
+    }, 400);
   }, true);
 
-  // justjoin.it to aplikacja jednostronicowa — adres zmienia się bez przeładowania
+  // justjoin.it to aplikacja jednostronicowa — adres zmienia się bez przeładowania.
+  // Liczy się tylko ścieżka oferty: górny „Aplikuj” zmienia sam dopisek w adresie
+  // (formularz / kotwica) i wcześniej to kasowało pasek z pytaniem.
   setInterval(() => {
-    if (location.href !== lastUrl) {
-      lastUrl = location.href;
+    const key = location.pathname.startsWith("/job-offer/") ? offerPath() : location.pathname;
+    if (key !== lastUrl) {
+      lastUrl = key;
       setTimeout(check, 800); // czekamy, aż strona ustawi tytuł oferty
     }
   }, 500);
