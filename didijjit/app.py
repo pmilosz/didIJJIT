@@ -93,6 +93,8 @@ def index():
 def summary():
     with db.session() as conn:
         counts = {k: conn.execute(f"select count(*) from offers where {w}").fetchone()[0] for k, w in VIEWS.items()}
+        # „Aplikowałem” obejmuje też aplikacje bez oferty na liście (spoza filtrów, ręczne, z historii, z pracuj.pl)
+        counts["aplikowalem"] += conn.execute("select count(*) from applications where offer_guid is null").fetchone()[0]
         last = conn.execute("select * from refreshes order by id desc limit 1").fetchone()
         apps = conn.execute("select count(*) from applications").fetchone()[0]
         # aktywne oferty firm, do których już wysłano CV (bez ofert, na które aplikowano)
@@ -178,6 +180,11 @@ def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "naj
             args.append(category)
         sql += f" order by {SORTS[sort]}"
         rows = [dict(r) for r in conn.execute(sql, args)]
+        unlinked = [dict(a) for a in conn.execute(
+            "select * from applications where offer_guid is null order by applied_at desc, id desc")] if view == "aplikowalem" else []
+        if unlinked and q.strip():
+            needle = q.strip().lower()
+            unlinked = [a for a in unlinked if needle in a["company"].lower() or needle in a["title"].lower()]
         history: dict[str, list[dict]] = {}
         for a in conn.execute("select * from applications order by applied_at desc"):
             history.setdefault(a["company_key"], []).append(dict(a))
@@ -193,7 +200,7 @@ def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "naj
             {**a, "same_title": bool(tk) and db.title_key(a["title"]) == tk}
             for a in history.get(r["company_key"], []) if a["offer_guid"] != r["guid"]
         ]
-    return {"offers": rows, "categories": cats}
+    return {"offers": rows, "categories": cats, "unlinked": unlinked}
 
 
 class StatusIn(BaseModel):

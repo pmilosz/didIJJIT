@@ -7,6 +7,11 @@
   oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*, bez „ofert rekomendowanych”;
 - ten sam filtr zapisany różnie w adresie („/praca/php;kw/gdynia;wp” i „/praca?kw=php&wp=Gdynia”) to jedno wyszukiwanie;
 - pasek mówi wprost, gdy program jest w starszej wersji i trzeba go uruchomić ponownie;
+- filtry z wieloma wartościami („wm=home-office,hybrid”) i kategorie w ścieżce są rozpoznawane jako to samo wyszukiwanie;
+- gdy wtyczka nie rozpozna ofert na stronie wyszukiwania, mówi o tym zamiast milczeć;
+
+**„Aplikowałem”** pokazuje też aplikacje, których oferty nie ma na liście (spoza Twoich filtrów, zapisane wtyczką,
+ręczne, z historii, z pracuj.pl) — w osobnej tabeli pod ofertami; licznik je uwzględnia.
 - nowa zakładka **pracuj.pl** z listą wyszukiwań (otwórz / usuń / dodaj adres ręcznie) i instrukcją;
 - import listy „Moje aplikacje” z pracuj.pl do rejestru aplikacji, bez duplikatów;
 - pasek „już aplikowałeś do tej firmy” i pytanie „Wysłałeś CV?” na stronach ofert pracuj.pl;

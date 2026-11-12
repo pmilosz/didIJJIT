@@ -378,3 +378,21 @@ def test_pracuj_auto_import_of_saved_searches(client):
     assert client.post("/api/pracuj/searches", json=alerts).json() == {"added": 0}
     assert client.get("/api/pracuj/searches").json() == []
     assert client.post("/api/pracuj/searches", json={"searches": alerts["searches"]}).json() == {"added": 1}
+
+
+def test_applied_view_includes_applications_without_offer(client):
+    client.post("/api/refresh")
+    client.post("/api/applied-from-page", json={"url": PRACUJ_URL, "company": "Initech", "title": "Tester"})
+    d = client.get("/api/offers", params={"view": "aplikowalem"}).json()
+    assert [o["guid"] for o in d["offers"]] == ["g1"] and [a["company"] for a in d["unlinked"]] == ["Initech"]
+    assert client.get("/api/summary").json()["counts"]["aplikowalem"] == 2
+    assert client.get("/api/offers", params={"view": "aplikowalem", "q": "globex"}).json()["unlinked"] == []
+    assert client.get("/api/offers", params={"view": "aktywne"}).json()["unlinked"] == []
+
+
+def test_pracuj_multi_value_filters_are_the_same_search():
+    from didijjit import pracuj
+    assert pracuj.same_search("https://www.pracuj.pl/praca/php;kw?tc=0&wm=home-office%2Chybrid&ws=0",
+                              "https://www.pracuj.pl/praca?kw=php&tc=0&wm=home-office&wm=hybrid&ws=0")
+    assert pracuj.same_search("https://www.pracuj.pl/praca/ai;kw/it%20-%20rozw%C3%B3j;cc,5016/e-commerce;cc,5013?rd=30",
+                              "https://www.pracuj.pl/praca?cc=5013&cc=5016&kw=ai&rd=30")

@@ -182,6 +182,7 @@ tr.st-nie_interesuje td { opacity:.55; }
 .src { display:inline-block; margin-left:6px; font-size:11px; font-weight:700; padding:1px 6px; border-radius:5px; vertical-align:1px;
   color:var(--new); background:var(--new-soft); }
 .wn.same { font-weight:700; }
+.subhead { font:700 15px var(--head); margin:22px 0 10px; }
 /* 4 ikony w siatce 2×2, żeby tabela mieściła się na laptopie */
 .acts { display:grid; grid-template-columns:repeat(2, 32px); gap:5px; justify-content:end; }
 .ic { width:32px; height:32px; border-radius:8px; border:var(--bw) solid var(--border); background:var(--surface); color:var(--muted); font-size:14px; display:grid; place-items:center; }
@@ -384,8 +385,17 @@ async function render() {
     </select></div>`;
   const table = rows.length ? `<div class="surface tablewrap"><table>
     <thead><tr><th>Stanowisko</th><th>Kategoria</th><th>Lokalizacja</th><th>Stawka</th><th>Status</th><th>Dodano</th><th></th></tr></thead>
-    <tbody>${rows.map(rowHtml).join("")}</tbody></table></div>` : `<div class="surface empty">Brak ofert w tym widoku.</div>`;
-  $("#view").innerHTML = statsHtml + banner + tools + table;
+    <tbody>${rows.map(rowHtml).join("")}</tbody></table></div>` : data.unlinked?.length ? "" : `<div class="surface empty">Brak ofert w tym widoku.</div>`;
+  // aplikacje, których oferty nie ma na liście (spoza filtrów, ręczne, z historii, z pracuj.pl)
+  const src = {reczna: "ręcznie", historia: "z historii", brave: "z historii", oferta: "z listy ofert", wtyczka: "z wtyczki", pracuj: "z pracuj.pl"};
+  const site = (u) => /pracuj\.pl/.test(u) ? "pracuj.pl" : /justjoin\.it/.test(u) ? "justjoin.it" : "";
+  const unlinked = data.unlinked?.length ? `<h3 class="subhead">Aplikacje spoza listy ofert <span class="co">(${data.unlinked.length})</span></h3>
+    <div class="surface tablewrap"><table><thead><tr><th>Stanowisko</th><th>Serwis</th><th>Źródło</th><th>Data</th></tr></thead><tbody>
+    ${data.unlinked.map((a) => `<tr><td><div class="who">${avatar(a.company)}<div>${a.url ? `<a class="t" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title || a.url)}</a>` : `<span class="t">${esc(a.title || "—")}</span>`}
+      <div class="co">${esc(a.company)}</div>${a.note ? `<span class="nt">✎ ${esc(a.note)}</span>` : ""}</div></div></td>
+      <td>${site(a.url) ? `<span class="src" style="margin:0">${site(a.url)}</span>` : ""}</td><td class="co">${src[a.source] || esc(a.source)}</td>
+      <td><span class="pill p-aplikowalem">Aplikowałeś ${day(a.applied_at)}</span></td></tr>`).join("")}</tbody></table></div>` : "";
+  $("#view").innerHTML = statsHtml + banner + tools + table + unlinked;
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
   document.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => { category = b.dataset.cat; store.set("category", category); render(); });
   document.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => toggleCategory(b.dataset.toggle));

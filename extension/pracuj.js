@@ -146,7 +146,13 @@
   async function listPage(found) {
     if (!(await markCompanies(found))) return;
     const zero = !found.length && !!document.querySelector('[data-test="zero-offers-section"]');
-    if (!found.length && !zero) return;
+    if (!found.length && !zero) {
+      // strona wyszukiwania, ale nie rozpoznano żadnej oferty — lepiej powiedzieć niż milczeć
+      if ((await api(`/api/pracuj/search-known?${new URLSearchParams({ url: location.href })}`)).data?.key) {
+        show("off", "nie rozpoznał ofert na tej stronie wyszukiwania. Zapisz stronę (Ctrl+S) i zgłoś to — trzeba dopasować odczyt do pracuj.pl.");
+      }
+      return;
+    }
     const known = (await api(`/api/pracuj/search-known?${new URLSearchParams({ url: location.href })}`)).data || {};
     const save = async () => {
       const s = await api("/api/pracuj/offers", { offers: found, search_url: location.href });

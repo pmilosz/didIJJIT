@@ -41,9 +41,18 @@ def _search_parts(url: str) -> tuple[str, list[tuple[str, str]]] | None:
     segs = [unquote(x) for x in u.path.split("/") if x]
     if not segs or segs[0].lower() != "praca":
         return None
-    params = [(seg.rsplit(";", 1)[1], seg.rsplit(";", 1)[0]) for seg in segs[1:] if ";" in seg]
-    params += parse_qsl(u.query, keep_blank_values=False)
-    params = sorted({(k.lower(), v.strip().lower()) for k, v in params
+    raw = []
+    for seg in segs[1:]:
+        if ";" not in seg:
+            continue
+        val, key = seg.rsplit(";", 1)
+        # kategoria w ścieżce: „it - rozwój oprogramowania;cc,5016” → cc=5016
+        if "," in key:
+            key, val = key.split(",", 1)
+        raw.append((key, val))
+    raw += parse_qsl(u.query, keep_blank_values=False)
+    # wiele wartości bywa zapisanych jako „wm=home-office,hybrid” albo „wm=home-office&wm=hybrid”
+    params = sorted({(k.lower(), v.strip().lower()) for k, vals in raw for v in vals.split(",")
                      if k.lower() not in _SKIP_PARAMS and not k.lower().startswith("utm_") and v.strip()})
     if not params:  # sama lista wszystkich ofert to nie wyszukiwanie
         return None
