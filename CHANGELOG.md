@@ -1,5 +1,22 @@
 # Historia zmian
 
+## 1.4.0 — w przygotowaniu
+
+**pracuj.pl** — drugie źródło ofert i aplikacji (przez wtyczkę, ze stron, które sam otwierasz; program nie łączy się z pracuj.pl):
+- import zapisanych wyszukiwań; oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*;
+- nowa zakładka **pracuj.pl** z listą wyszukiwań (otwórz / usuń / dodaj adres ręcznie) i instrukcją;
+- import listy „Moje aplikacje” z pracuj.pl do rejestru aplikacji, bez duplikatów;
+- pasek „już aplikowałeś do tej firmy” i pytanie „Wysłałeś CV?” na stronach ofert pracuj.pl;
+- znaczek przy ofertach firm, do których już aplikowałeś, bezpośrednio na liście wyników pracuj.pl.
+
+**Ostrzeżenie „na to samo stanowisko”** — oprócz tej samej firmy program rozpoznaje to samo stanowisko także między serwisami
+(pomija poziom i dopiski, np. „Senior Python Developer (K/M)” = „Python Developer”).
+
+**Zgodność wstecz:** baza z poprzednich wersji jest uzupełniana automatycznie (nowe kolumny, nic nie jest usuwane);
+dotychczasowe oferty dostają źródło „justjoin.it”. Odświeżanie justjoin.it nie zmienia ofert z pracuj.pl.
+
+**Wtyczka 1.3.0** — nowe uprawnienie do pracuj.pl. Po aktualizacji przeładuj wtyczkę na stronie rozszerzeń.
+
 ## 1.3.0 — 2026-11-11
 
 **Program**

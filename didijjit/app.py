@@ -1,6 +1,6 @@
 """didIJJIT — lokalna lista ofert z justjoin.it i rejestr wysłanych aplikacji."""
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -15,7 +15,7 @@ import os
 import platform
 import zipfile
 
-from . import config, db, history, jjit
+from . import config, db, history, jjit, pracuj
 from .places import CATEGORIES, CITIES
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -57,15 +57,25 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _offer_for_url(conn, url: str):
+    """Oferta z bazy wskazywana przez adres justjoin.it albo pracuj.pl."""
+    slug = _jjit_slug(url)
+    if slug:
+        return conn.execute("select * from offers where slug = ? and source = 'jjit'", (slug,)).fetchone()
+    pid = pracuj.offer_id(url)
+    return conn.execute("select * from offers where guid = ?", (pracuj.guid(pid),)).fetchone() if pid else None
+
+
 def _link_applications(conn) -> None:
-    """Oznacza oferty jako 'aplikowałem', jeśli aplikacja wskazuje tę samą ofertę (slug albo firma + stanowisko)."""
+    """Oznacza oferty jako 'aplikowałem', jeśli aplikacja wskazuje tę samą ofertę (adres albo firma + stanowisko)."""
     for a in conn.execute("select * from applications where offer_guid is null").fetchall():
-        slug = a["url"].rstrip("/").rsplit("/", 1)[-1].split("?")[0] if "justjoin.it/job-offer/" in a["url"] else None
-        offer = conn.execute(
-            "select guid from offers where slug = ? or (company_key = ? and lower(title) = lower(?) and ? != '') "
-            "order by active desc limit 1",
-            (slug, a["company_key"], a["title"], a["title"]),
-        ).fetchone()
+        offer = _offer_for_url(conn, a["url"]) if a["url"] else None
+        if not offer and a["title"].strip():
+            tk = db.title_key(a["title"])
+            offer = next((o for o in conn.execute(
+                "select guid, title from offers where company_key = ? and status != 'aplikowalem' order by active desc",
+                (a["company_key"],),
+            ) if tk and db.title_key(o["title"]) == tk), None)
         if offer:
             conn.execute("update applications set offer_guid = ? where id = ?", (offer["guid"], a["id"]))
             conn.execute(
@@ -115,7 +125,7 @@ def refresh():
         refresh_id = cur.lastrowid
         added = 0
         for o in fetched:
-            exists = conn.execute("select 1 from offers where guid = ?", (o["guid"],)).fetchone()
+            exists = conn.execute("select 1 from offers where guid = ?", (o["guid"],)).fetchone()  # guid z jjit, bez prefiksu
             if exists:
                 conn.execute(
                     "update offers set title=?, company=?, city=?, workplace=?, experience=?, category=?, salary=?, "
@@ -137,11 +147,11 @@ def refresh():
         # a te ze statusem lub notatką zostają jako wygasłe
         if fetched:
             conn.execute(
-                "delete from offers where last_seen_refresh is not ? and status = 'nowa' and note = '' "
-                "and guid not in (select offer_guid from applications where offer_guid is not null)",
+                "delete from offers where source = 'jjit' and last_seen_refresh is not ? and status = 'nowa' "
+                "and note = '' and guid not in (select offer_guid from applications where offer_guid is not null)",
                 (refresh_id,),
             )
-            conn.execute("update offers set active = 0 where last_seen_refresh is not ?", (refresh_id,))
+            conn.execute("update offers set active = 0 where source = 'jjit' and last_seen_refresh is not ?", (refresh_id,))
         conn.execute("update refreshes set added = ? where id = ?", (added, refresh_id))
         _link_applications(conn)
     return {"fetched": len(fetched), "added": added}
@@ -171,10 +181,18 @@ def offers(view: str = "nowe", q: str = "", category: str = "", sort: str = "naj
         history: dict[str, list[dict]] = {}
         for a in conn.execute("select * from applications order by applied_at desc"):
             history.setdefault(a["company_key"], []).append(dict(a))
+    day_ago = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(timespec="seconds")
     for r in rows:
-        r["fresh"] = r["first_seen_refresh"] == last
-        r["url"] = jjit.OFFER_URL.format(slug=r["slug"])
-        r["company_history"] = [a for a in history.get(r["company_key"], []) if a["offer_guid"] != r["guid"]]
+        if r["source"] == "jjit":
+            r["fresh"] = r["first_seen_refresh"] == last
+            r["url"] = jjit.OFFER_URL.format(slug=r["slug"])
+        else:  # pracuj.pl: oferty dochodzą przy oglądaniu wyszukiwań, nie przy odświeżeniu
+            r["fresh"] = r["first_seen_at"] >= day_ago
+        tk = db.title_key(r["title"])
+        r["company_history"] = [
+            {**a, "same_title": bool(tk) and db.title_key(a["title"]) == tk}
+            for a in history.get(r["company_key"], []) if a["offer_guid"] != r["guid"]
+        ]
     return {"offers": rows, "categories": cats}
 
 
@@ -199,8 +217,8 @@ def set_status(guid: str, body: StatusIn):
                 conn.execute(
                     "insert into applications (company, company_key, title, url, applied_at, source, offer_guid) "
                     "values (?,?,?,?,?,?,?)",
-                    (offer["company"], offer["company_key"], offer["title"], jjit.OFFER_URL.format(slug=offer["slug"]),
-                     when, "oferta", guid),
+                    (offer["company"], offer["company_key"], offer["title"],
+                     offer["url"] or jjit.OFFER_URL.format(slug=offer["slug"]), when, "oferta", guid),
                 )
         else:
             # cofnięcie 'aplikowałem' usuwa wpis utworzony z tej oferty
@@ -232,7 +250,7 @@ class ApplicationIn(BaseModel):
     url: str = ""
     applied_at: date
     note: str = ""
-    source: Literal["reczna", "historia", "wtyczka"] = "reczna"
+    source: Literal["reczna", "historia", "wtyczka", "pracuj"] = "reczna"
     history_key: str | None = None
 
 
@@ -308,27 +326,43 @@ def _jjit_slug(url: str) -> str | None:
 
 
 @app.get("/api/lookup")
-def lookup(url: str, company: str = ""):
+def lookup(url: str, company: str = "", title: str = ""):
     """Dla wtyczki: czy ta oferta jest w bazie i czy aplikowałeś już do tej firmy."""
-    slug = _jjit_slug(url)
+    pid = pracuj.offer_id(url)
+    clean = pracuj.clean_url(url) if pid else url.split("?")[0]
     with db.session() as conn:
-        offer = conn.execute("select * from offers where slug = ?", (slug,)).fetchone() if slug else None
+        offer = _offer_for_url(conn, url)
         key = offer["company_key"] if offer else db.company_key(company) if company.strip() else None
         apps = [dict(a) for a in conn.execute(
             "select * from applications where company_key = ? or (url != '' and url = ?) order by applied_at desc",
-            (key, url.split("?")[0]),
+            (key, clean),
         )] if key or url else []
     # ta sama oferta bywa opublikowana w kilku kategoriach pod różnymi adresami — porównujemy też stanowisko
-    same_title = lambda a: offer and a["company_key"] == offer["company_key"] and a["title"].lower() == offer["title"].lower()
+    tk = db.title_key(offer["title"] if offer else title)
+    same_title = lambda a: bool(tk) and a["company_key"] == key and db.title_key(a["title"]) == tk
     this_offer = [
         a for a in apps
-        if (offer and a["offer_guid"] == offer["guid"]) or a["url"] == url.split("?")[0] or same_title(a)
+        if (offer and a["offer_guid"] == offer["guid"]) or a["url"] == clean or same_title(a)
+        or (pid and pracuj.offer_id(a["url"]) == pid)
     ]
     return {
         "offer": {k: offer[k] for k in ("guid", "title", "company", "status", "status_at")} if offer else None,
         "applied_here": this_offer[0] if this_offer else None,
         "company_history": [a for a in apps if a not in this_offer],
     }
+
+
+class CompaniesIn(BaseModel):
+    companies: list[str]
+
+
+@app.post("/api/companies/applied")
+def companies_applied(body: CompaniesIn):
+    """Dla wtyczki na liście ofert: do których z tych firm już wysłano CV (nazwa → data ostatniej aplikacji)."""
+    keys = {c: db.company_key(c) for c in body.companies[:500] if c.strip()}
+    with db.session() as conn:
+        last = {r[0]: r[1] for r in conn.execute("select company_key, max(applied_at) from applications group by company_key")}
+    return {c: last[k] for c, k in keys.items() if k in last}
 
 
 class PageApplyIn(BaseModel):
@@ -340,17 +374,169 @@ class PageApplyIn(BaseModel):
 @app.post("/api/applied-from-page")
 def applied_from_page(body: PageApplyIn):
     """Wtyczka: użytkownik potwierdził, że wysłał CV na tej stronie."""
-    slug = _jjit_slug(body.url)
     with db.session() as conn:
-        offer = conn.execute("select guid from offers where slug = ?", (slug,)).fetchone() if slug else None
+        offer = _offer_for_url(conn, body.url)
     if offer:
         return set_status(offer["guid"], StatusIn(status="aplikowalem"))
     with db.session() as conn:
         _insert_application(conn, ApplicationIn(
-            company=body.company, title=body.title, url=body.url.split("?")[0], applied_at=date.today(), source="wtyczka",
+            company=body.company, title=body.title, url=body.url.split("?")[0].split("#")[0], applied_at=date.today(),
+            source="wtyczka",
         ))
         _link_applications(conn)
     return {"ok": True}
+
+
+# ===== pracuj.pl: dane przysyła wtyczka ze stron, które użytkownik sam otwiera =====
+
+class PracujOfferIn(BaseModel):
+    url: str
+    title: str
+    company: str
+    city: str = ""
+    workplace: str = ""
+    experience: str = ""
+    salary: str = ""
+    published_at: str = ""
+
+
+class PracujOffersIn(BaseModel):
+    offers: list[PracujOfferIn]
+    search_url: str = ""
+
+
+@app.post("/api/pracuj/offers")
+def pracuj_offers(body: PracujOffersIn):
+    """Wtyczka: oferty z oglądanej strony zapisanego wyszukiwania pracuj.pl."""
+    now = _now()
+    added = 0
+    cfg = config.load()
+    with db.session() as conn:
+        for o in body.offers[:300]:
+            pid = pracuj.offer_id(o.url)
+            if not pid or not o.title.strip() or not o.company.strip():
+                continue
+            if not pracuj.allowed(o.title, o.company, cfg):
+                continue
+            guid = pracuj.guid(pid)
+            fields = (o.title.strip(), o.company.strip(), db.company_key(o.company), o.city, o.workplace, o.experience,
+                      o.salary, o.published_at, pracuj.clean_url(o.url))
+            if conn.execute("select 1 from offers where guid = ?", (guid,)).fetchone():
+                conn.execute(
+                    "update offers set title=?, company=?, company_key=?, city=?, workplace=?, experience=?, salary=?, "
+                    "published_at=coalesce(nullif(?, ''), published_at), url=?, last_seen_at=?, active=1 where guid=?",
+                    (*fields, now, guid),
+                )
+            else:
+                added += 1
+                conn.execute(
+                    "insert into offers (guid, slug, title, company, company_key, city, workplace, experience, category, "
+                    "salary, apply_url, published_at, url, first_seen_at, last_seen_at, source) "
+                    "values (?,?,?,?,?,?,?,?,'pracuj',?,'',?,?,?,?,'pracuj')",
+                    (guid, guid, *fields[:6], fields[6], fields[7] or now, fields[8], now, now),
+                )
+        key = pracuj.search_key(body.search_url) if body.search_url else ""
+        if key:
+            conn.execute("update pracuj_searches set last_visit_at = ?, last_count = ? where url = ?",
+                         (now, len(body.offers), key))
+        # oferty niewidziane od 30 dni: nietknięte usuwamy, pozostałe oznaczamy jako wygasłe
+        old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat(timespec="seconds")
+        conn.execute(
+            "delete from offers where source = 'pracuj' and last_seen_at < ? and status = 'nowa' and note = '' "
+            "and guid not in (select offer_guid from applications where offer_guid is not null)", (old,))
+        conn.execute("update offers set active = 0 where source = 'pracuj' and last_seen_at < ?", (old,))
+        _link_applications(conn)
+    return {"received": len(body.offers), "added": added}
+
+
+@app.get("/api/pracuj/searches")
+def pracuj_searches():
+    with db.session() as conn:
+        return [dict(r) for r in conn.execute("select * from pracuj_searches order by added_at")]
+
+
+class SearchIn(BaseModel):
+    url: str
+    name: str = ""
+
+
+class SearchesIn(BaseModel):
+    searches: list[SearchIn]
+
+
+@app.post("/api/pracuj/searches")
+def pracuj_add_searches(body: SearchesIn):
+    """Dodanie zapisanych wyszukiwań (z wtyczki albo wklejonego adresu). Zwraca liczbę nowych."""
+    added = 0
+    with db.session() as conn:
+        for s in body.searches[:100]:
+            key = pracuj.search_key(s.url)
+            if not key:
+                if len(body.searches) == 1:
+                    raise HTTPException(400, "To nie jest adres wyszukiwania ofert na pracuj.pl")
+                continue
+            cur = conn.execute("insert or ignore into pracuj_searches (url, name, added_at) values (?,?,?)",
+                               (key, s.name.strip()[:200], _now()))
+            added += cur.rowcount
+            if s.name.strip():
+                conn.execute("update pracuj_searches set name = ? where url = ? and name = ''", (s.name.strip()[:200], key))
+    return {"added": added}
+
+
+@app.post("/api/pracuj/searches/delete")
+def pracuj_delete_search(body: SearchIn):
+    with db.session() as conn:
+        conn.execute("delete from pracuj_searches where url = ?", (body.url,))
+    return {"ok": True}
+
+
+@app.get("/api/pracuj/search-known")
+def pracuj_search_known(url: str):
+    """Dla wtyczki: czy oglądana lista ofert to zapisane wyszukiwanie."""
+    key = pracuj.search_key(url)
+    with db.session() as conn:
+        known = bool(key) and conn.execute("select 1 from pracuj_searches where url = ?", (key,)).fetchone() is not None
+    return {"known": known, "key": key}
+
+
+class PracujAppIn(BaseModel):
+    company: str
+    title: str = ""
+    url: str = ""
+    applied_at: date | None = None
+
+
+class PracujAppsIn(BaseModel):
+    items: list[PracujAppIn]
+
+
+@app.post("/api/pracuj/applications")
+def pracuj_applications(body: PracujAppsIn):
+    """Wtyczka: import listy „Moje aplikacje” z pracuj.pl; pomija to, co już jest w rejestrze."""
+    added = 0
+    with db.session() as conn:
+        existing = [dict(r) for r in conn.execute("select company_key, title, url, applied_at from applications")]
+        for it in body.items[:500]:
+            if not it.company.strip():
+                continue
+            url = pracuj.clean_url(it.url) if pracuj.offer_id(it.url) else it.url.split("?")[0]
+            ck, tk = db.company_key(it.company), db.title_key(it.title)
+            when = (it.applied_at or date.today()).isoformat()
+            dup = any(
+                (url and e["url"] and pracuj.offer_id(e["url"]) and pracuj.offer_id(e["url"]) == pracuj.offer_id(url))
+                or (e["company_key"] == ck and db.title_key(e["title"]) == tk and e["applied_at"][:10] == when)
+                for e in existing
+            )
+            if dup:
+                continue
+            _insert_application(conn, ApplicationIn(
+                company=it.company, title=it.title, url=url, applied_at=when, source="pracuj",
+                note="" if it.applied_at else "import z pracuj.pl — data nieznana, wpisano dzień importu",
+            ))
+            existing.append({"company_key": ck, "title": it.title, "url": url, "applied_at": when})
+            added += 1
+        _link_applications(conn)
+    return {"received": len(body.items), "added": added}
 
 
 @app.get("/api/settings")

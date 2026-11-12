@@ -29,7 +29,9 @@ create table if not exists offers (
     active integer not null default 1,
     status text not null default 'nowa',
     status_at text,
-    note text not null default ''
+    note text not null default '',
+    source text not null default 'jjit',
+    url text not null default ''
 );
 create index if not exists offers_company on offers(company_key);
 
@@ -57,6 +59,14 @@ create table if not exists refreshes (
 create table if not exists history_dismissed (
     key text primary key
 );
+
+create table if not exists pracuj_searches (
+    url text primary key,
+    name text not null default '',
+    added_at text not null,
+    last_visit_at text,
+    last_count integer
+);
 """
 
 # końcówki form prawnych i dopiski, które różnią zapis tej samej firmy
@@ -73,6 +83,22 @@ def company_key(name: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = re.sub(r"[^a-z0-9]+", "", s)
     return s or re.sub(r"[^a-z0-9]+", "", name.lower())
+
+
+# dopiski w nazwach stanowisk, które nie zmieniają samego stanowiska
+_TITLE_NOISE = re.compile(
+    r"\((?:[kmxd]\s*/\s*)+[kmxd]\)|\b(?:[kmx]/){1,2}[kmx]\b|\b(?:junior|mid|regular|senior|lead|principal|staff|"
+    r"starszy|młodszy|mlodszy|specjalista|specjalistka|stażysta|stazysta|intern|trainee|remote|zdalnie|hybrid|"
+    r"hybrydowo|b2b|uop)\b",
+    re.IGNORECASE,
+)
+
+
+def title_key(title: str) -> str:
+    """Klucz do porównywania stanowisk z różnych serwisów: bez poziomu, „(K/M)” i interpunkcji."""
+    s = _TITLE_NOISE.sub(" ", (title or "").lower()).replace("ł", "l")
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "", s)
 
 
 def connect() -> sqlite3.Connection:
@@ -97,6 +123,11 @@ def init() -> None:
     with session() as conn:
         conn.executescript(SCHEMA)
         cols = {r[1] for r in conn.execute("pragma table_info(offers)")}
+        # 1.4: oferty z wielu serwisów — dotychczasowe są z justjoin.it
+        if "source" not in cols:
+            conn.execute("alter table offers add column source text not null default 'jjit'")
+        if "url" not in cols:
+            conn.execute("alter table offers add column url text not null default ''")
         if "last_seen_refresh" not in cols:
             conn.execute("alter table offers add column last_seen_refresh integer")
             conn.execute("update offers set last_seen_refresh = first_seen_refresh")

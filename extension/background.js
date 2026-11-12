@@ -22,6 +22,14 @@ api.runtime.onMessage.addListener((msg, _sender, reply) => {
           body: JSON.stringify({ url: msg.url, company: msg.company, title: msg.title }),
         });
         reply({ ok: r.ok, data: await r.json() });
+      } else if (msg.type === "api" && typeof msg.path === "string" && msg.path.startsWith("/api/")) {
+        // ogólne zapytanie do programu (strony pracuj.pl); tylko ścieżki API programu
+        const r = await fetch(base + msg.path, msg.body === undefined ? {} : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(msg.body),
+        });
+        reply({ ok: r.ok, data: await r.json().catch(() => ({})) });
       }
     } catch (e) {
       reply({ ok: false, offline: true, base });

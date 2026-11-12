@@ -179,6 +179,9 @@ tr.st-nie_interesuje td { opacity:.55; }
 [data-theme="brutal"] .pill { border:2px solid #111; border-radius:7px; transform:rotate(2deg); }
 .cat { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); white-space:nowrap; }
 [data-theme="brutal"] .cat { color:#111; border:2px solid #111; }
+.src { display:inline-block; margin-left:6px; font-size:11px; font-weight:700; padding:1px 6px; border-radius:5px; vertical-align:1px;
+  color:var(--new); background:var(--new-soft); }
+.wn.same { font-weight:700; }
 /* 4 ikony w siatce 2×2, żeby tabela mieściła się na laptopie */
 .acts { display:grid; grid-template-columns:repeat(2, 32px); gap:5px; justify-content:end; }
 .ic { width:32px; height:32px; border-radius:8px; border:var(--bw) solid var(--border); background:var(--surface); color:var(--muted); font-size:14px; display:grid; place-items:center; }
@@ -272,7 +275,7 @@ const OFFER_VIEWS = [
   ["nowe", "Nowe", "Nowe oferty"], ["aktywne", "Wszystkie", "Wszystkie oferty"], ["przejrzane", "Przejrzane", "Przejrzane"],
   ["aplikowalem", "Aplikowałem", "Aplikowałem"], ["nie_interesuje", "Nie interesuje", "Nie interesuje"], ["wygasle", "Wygasłe", "Wygasłe oferty"],
 ];
-const TOOL_VIEWS = [["aplikacje", "Moje aplikacje"], ["historia", "Import z historii"], ["ustawienia", "Ustawienia"], ["wtyczka", "Wtyczka"]];
+const TOOL_VIEWS = [["aplikacje", "Moje aplikacje"], ["pracuj", "pracuj.pl"], ["historia", "Import z historii"], ["ustawienia", "Ustawienia"], ["wtyczka", "Wtyczka"]];
 const THEMES = [["dashboard", "Dashboard"], ["aurora", "Aurora"], ["brutal", "Brutal"], ["radar", "Radar"]];
 const STATUS_LABEL = {nowa: "Nowa", przejrzana: "Przejrzana", aplikowalem: "Aplikowałeś", nie_interesuje: "Nie interesuje"};
 const store = {get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }};
@@ -281,7 +284,7 @@ const VIEWS_ALL = [...OFFER_VIEWS.map((v) => v[0]), ...TOOL_VIEWS.map((v) => v[0
 let view = VIEWS_ALL.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get("view", "nowe"), query = "", summary = null, meta = null;
 let category = store.get("category", ""), sort = store.get("sort", "najnowsze"), hideApplied = store.get("hideApplied", "") === "1";
 const extVersion = () => document.documentElement.dataset.didijjitExtension;
-const catLabel = (k) => meta?.categories?.[k] || k;
+const catLabel = (k) => k === "pracuj" ? "pracuj.pl" : meta?.categories?.[k] || k;
 const isOfferView = () => OFFER_VIEWS.some((v) => v[0] === view);
 
 const $ = (s) => document.querySelector(s);
@@ -353,6 +356,7 @@ async function render() {
   if (view === "historia") return renderHistory();
   if (view === "ustawienia") return renderSettings();
   if (view === "wtyczka") return renderExtension();
+  if (view === "pracuj") return renderPracuj();
   const hide = hideApplied && view !== "aplikowalem";
   const data = await api(`/api/offers?view=${view}&q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${sort}&hide_applied=${hide}`);
   const rows = data.offers, cats = data.categories;
@@ -395,14 +399,15 @@ async function render() {
 
 function rowHtml(o) {
   const hist = o.company_history.map((a) => `${day(a.applied_at)}${a.title ? " – " + esc(a.title) : ""}`).join("; ");
+  const same = o.company_history.some((a) => a.same_title);
   const label = o.status === "nowa" ? (o.fresh ? "Nowa" : "Nieprzejrzana") : o.status === "aplikowalem" ? `Aplikowałeś ${day(o.status_at)}` : STATUS_LABEL[o.status];
   const acts = [["przejrzana", "👁", "Przejrzana"], ["aplikowalem", "✓", "Aplikowałem"], ["nie_interesuje", "✕", "Nie interesuje"], ["nowa", "↺", "Przywróć jako nową"]]
     .filter(([k]) => k !== o.status)
     .map(([k, i, t]) => `<button class="ic ${k === "aplikowalem" ? "go" : ""}" data-st="${k}" title="${t}" aria-label="${t}">${i}</button>`).join("");
   return `<tr class="st-${o.status} ${o.status === "nowa" && o.fresh ? "fresh" : ""}" data-g="${o.guid}">
     <td><div class="who">${avatar(o.company)}<div><a class="t" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.title)}</a>
-      <div class="co">${esc(o.company)}</div>
-      ${hist ? `<span class="wn">⚠ Już aplikowałeś do tej firmy: ${hist}</span>` : ""}
+      <div class="co">${esc(o.company)}${o.source === "pracuj" ? `<span class="src" title="Oferta z pracuj.pl">pracuj.pl</span>` : ""}</div>
+      ${hist ? `<span class="wn ${same ? "same" : ""}">⚠ ${same ? "Już aplikowałeś na to stanowisko w tej firmie" : "Już aplikowałeś do tej firmy"}: ${hist}</span>` : ""}
       ${o.note ? `<span class="nt">✎ ${esc(o.note)}</span>` : ""}</div></div></td>
     <td><span class="cat">${esc(catLabel(o.category))}</span></td>
     <td>${esc(o.city)}<div class="co">${esc(o.workplace)} · ${esc(o.experience)}</div></td>
@@ -433,7 +438,7 @@ async function setStatus(guid, status) {
 
 async function renderApplications() {
   const rows = await api("/api/applications");
-  const src = {reczna: "ręcznie", historia: "z historii", brave: "z historii", oferta: "z listy ofert", wtyczka: "z wtyczki"};
+  const src = {reczna: "ręcznie", historia: "z historii", brave: "z historii", oferta: "z listy ofert", wtyczka: "z wtyczki", pracuj: "z pracuj.pl"};
   $("#view").innerHTML = `<p class="hint">Wszystkie miejsca, do których wysłałeś CV. Z tej listy powstaje ostrzeżenie „już aplikowałeś do tej firmy”.</p>
     <form class="add" id="add">
       <input name="company" placeholder="Firma *" required>
@@ -548,6 +553,51 @@ async function renderSettings() {
   };
 }
 
+async function renderPracuj() {
+  const rows = await api("/api/pracuj/searches");
+  const ext = extVersion() && extVersion().localeCompare("1.3.0", undefined, {numeric: true}) >= 0;
+  $("#view").innerHTML = `
+    ${ext ? "" : `<div class="banner surface"><span>🧩 Oferty z pracuj.pl zbiera wtyczka didIJJIT w wersji 1.3.0 lub nowszej${extVersion() ? " — przeładuj ją na stronie rozszerzeń" : ""}.</span>
+      <button class="btn" data-go="wtyczka">Wtyczka</button></div>`}
+    <div class="surface panel"><h3>Jak to działa</h3>
+      <p class="hint" style="margin-bottom:0">pracuj.pl nie pozwala programom pobierać ofert, więc didIJJIT się z nim nie łączy.
+      Robi to wtyczka, gdy <b>sam otwierasz</b> strony pracuj.pl w przeglądarce, w której jesteś zalogowany:</p>
+      <ol class="hint">
+        <li><b>Zapisane wyszukiwania</b> — otwórz je na pracuj.pl (Moje konto → zapisane wyszukiwania) i kliknij „Importuj” na pasku didIJJIT.
+          Możesz też otworzyć dowolną listę ofert i kliknąć „Dodaj wyszukiwanie” albo wkleić jej adres poniżej.</li>
+        <li><b>Oferty</b> — za każdym razem, gdy otworzysz zapisane wyszukiwanie (linki poniżej), oferty z tej strony trafią na listę
+          z oznaczeniem <span class="src">pracuj.pl</span>. Dalsze strony wyników zapisują się, gdy je przejrzysz.</li>
+        <li><b>Twoje aplikacje</b> — otwórz na pracuj.pl listę swoich aplikacji i kliknij „Pokaż i zapisz”. Firmy i stanowiska
+          trafią do „Moich aplikacji”, więc ostrzeżenia zadziałają także dla ofert z justjoin.it.</li>
+        <li>Na stronie oferty pracuj.pl zobaczysz ten sam pasek co na justjoin.it: czy już aplikowałeś do tej firmy lub na to stanowisko.</li>
+      </ol>
+      <p class="hint" style="margin:0">Z Ustawień programu do ofert z pracuj.pl stosowane są tylko wykluczenia (słowa i firmy) — resztę filtrów ustawiasz w samym wyszukiwaniu na pracuj.pl.
+      Oferty niewidziane od 30 dni znikają z listy (te ze statusem lub notatką trafiają do „Wygasłych”).</p></div>
+    <form class="add" id="addSearch">
+      <input name="url" placeholder="Adres wyszukiwania z pracuj.pl, np. https://it.pracuj.pl/praca?its=backend" required style="flex:3">
+      <input name="name" placeholder="Nazwa (opcjonalnie)">
+      <button class="primary">Dodaj wyszukiwanie</button>
+    </form>
+    ${rows.length ? `<div class="surface tablewrap"><table><thead><tr><th>Wyszukiwanie</th><th>Ostatnio otwarte</th><th>Ofert</th><th></th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td><a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.name || "Wyszukiwanie")}</b></a>
+        <div class="co" style="word-break:break-all">${esc(r.url)}</div></td>
+        <td class="ago">${r.last_visit_at ? ago(r.last_visit_at) : "jeszcze nie"}</td><td>${r.last_count ?? "–"}</td>
+        <td><div style="display:flex;gap:6px;justify-content:flex-end"><a class="btn" style="text-decoration:none;color:var(--text)" href="${esc(r.url)}" target="_blank" rel="noopener">Otwórz</a>
+          <button class="btn danger" data-delsearch="${esc(r.url)}">Usuń</button></div></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="surface empty">Nie masz jeszcze zapisanych wyszukiwań. Zaimportuj je z pracuj.pl albo wklej adres powyżej.</div>`}`;
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+  $("#addSearch").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target));
+    try { await api("/api/pracuj/searches", {method: "POST", body: {searches: [f]}}); } catch (err) { return toast(err.message); }
+    toast("Dodano — otwórz je, żeby zebrać oferty"); render();
+  };
+  document.querySelectorAll("[data-delsearch]").forEach((b) => b.onclick = async () => {
+    if (!confirm("Usunąć to wyszukiwanie? Zebrane oferty zostaną na liście.")) return;
+    await api("/api/pracuj/searches/delete", {method: "POST", body: {url: b.dataset.delsearch}}); render();
+  });
+}
+
 async function renderExtension() {
   const d = await api("/api/extension");
   const v = extVersion();
@@ -555,7 +605,7 @@ async function renderExtension() {
   $("#view").innerHTML = `
     <div class="surface panel">${v ? `<span class="ok">✓ Wtyczka działa w tej przeglądarce (wersja ${esc(v)})</span>${v !== d.version ? ` — dostępna nowsza wersja ${esc(d.version)}: przeładuj ją na stronie rozszerzeń.` : ""}`
       : `<span class="no">Wtyczka nie jest zainstalowana w tej przeglądarce.</span>`}
-      <p class="hint" style="margin-bottom:0">Na stronie oferty justjoin.it wtyczka pokazuje pasek: zielony — już aplikowałeś na tę ofertę, żółty — aplikowałeś do tej firmy na inne stanowisko.
+      <p class="hint" style="margin-bottom:0">Na stronie oferty justjoin.it i pracuj.pl wtyczka pokazuje pasek: zielony — już aplikowałeś na tę ofertę, żółty — aplikowałeś do tej firmy na inne stanowisko.
       Po kliknięciu „Aplikuj / Apply” zapyta, czy zapisać aplikację. Działa, gdy program didIJJIT jest uruchomiony.</p></div>
     <div class="surface panel"><h3>Brave, Chrome, Edge, Opera, Vivaldi</h3><ol>
       <li>Otwórz stronę rozszerzeń (wklej adres w pasek przeglądarki): ${browsers.map(([n, u]) => `${n} <code>${u}</code>`).join(", ")}.</li>
@@ -566,7 +616,7 @@ async function renderExtension() {
       <li>Wróć tutaj i odśwież stronę — przy zakładce „Wtyczka” pojawi się ✓.</li></ol></div>
     <div class="surface panel"><h3>Firefox (121+)</h3><ol>
       <li>Otwórz <code>about:debugging#/runtime/this-firefox</code> → <b>Załaduj tymczasowy dodatek</b> → wskaż plik <code>manifest.json</code> w folderze powyżej.</li>
-      <li>W <code>about:addons</code> → didIJJIT → <b>Uprawnienia</b> zezwól na justjoin.it i localhost.</li>
+      <li>W <code>about:addons</code> → didIJJIT → <b>Uprawnienia</b> zezwól na justjoin.it, pracuj.pl i localhost.</li>
       <li>Firefox usuwa tymczasowe dodatki po zamknięciu przeglądarki.</li></ol></div>
     <div class="surface panel"><h3>Inny komputer?</h3><p class="hint" style="margin:0">Pobierz wtyczkę jako ZIP, rozpakuj i wskaż rozpakowany folder:
       <a href="/didIJJIT-extension.zip">didIJJIT-extension-${esc(d.version)}.zip</a></p></div>`;

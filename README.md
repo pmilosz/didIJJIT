@@ -4,14 +4,17 @@
 
 Prosty, lokalny program dla osób szukających pracy w IT:
 
-- zbiera oferty z **justjoin.it** według Twoich ustawień (technologie, miasta, praca zdalna);
+- zbiera oferty z **justjoin.it** według Twoich ustawień (technologie, miasta, praca zdalna)
+  oraz z Twoich **zapisanych wyszukiwań na pracuj.pl** (przez wtyczkę, gdy je otwierasz);
 - wyraźnie pokazuje **nowe** oferty od ostatniego sprawdzenia;
 - pamięta, **gdzie już wysłałeś CV**, i ostrzega, gdy trafisz na kolejną ofertę tej samej firmy;
 - jednorazowo **odtwarza historię aplikacji** z historii Twojej przeglądarki (Brave, Chrome, Edge, Opera, Vivaldi, Firefox);
-- ma **wtyczkę do przeglądarki**, która na stronie oferty justjoin.it pokazuje pasek „już aplikowałeś do tej firmy” i po kliknięciu „Aplikuj” pyta, czy zapisać aplikację.
+- ma **wtyczkę do przeglądarki**, która na stronie oferty justjoin.it i pracuj.pl pokazuje pasek „już aplikowałeś do tej firmy”
+  (albo „na to samo stanowisko”, także gdy aplikowałeś przez drugi serwis) i po kliknięciu „Aplikuj” pyta, czy zapisać aplikację.
 
 Wszystko działa na Twoim komputerze. Nie ma kont, chmury, AI ani kluczy API.
-Program łączy się tylko z justjoin.it, żeby pobrać listę ofert.
+Program łączy się tylko z justjoin.it, żeby pobrać listę ofert. Z pracuj.pl się nie łączy — oferty z tego serwisu
+odczytuje wtyczka ze stron, które sam otwierasz w przeglądarce.
 
 ![Lista ofert](docs/screenshot.png)
 
@@ -20,7 +23,7 @@ Przełączasz je kafelkami w lewym dolnym rogu albo w Ustawieniach. Wybór jest 
 
 ![Motywy wyglądu](docs/motywy.png)
 
-> didIJJIT to nieoficjalne, fanowskie narzędzie do własnego użytku. **Nie jest produktem justjoin.it** ani nie jest z nim w żaden sposób powiązany; nazwa to tylko gra słów.
+> didIJJIT to nieoficjalne, fanowskie narzędzie do własnego użytku. **Nie jest produktem justjoin.it ani pracuj.pl** i nie jest z nimi w żaden sposób powiązany; nazwa to tylko gra słów.
 > Korzysta z tego samego publicznego API listy ofert co strona justjoin.it, więc może przestać działać po zmianach po ich stronie.
 > Oferty pobiera tylko po kliknięciu „Odśwież oferty” — nie odpytuje serwisu w tle.
 
@@ -112,6 +115,26 @@ Przy każdej ofercie możesz zmienić status i dopisać notatkę.
 Gdy oznaczysz „Aplikowałem”, program zapyta o datę. Od tej chwili każda oferta tej firmy pokaże ostrzeżenie
 „Już aplikowałeś do tej firmy” (nazwy porównywane są bez „sp. z o.o.”, „S.A.”, „Polska” itp.).
 
+### Oferty i aplikacje z pracuj.pl
+
+pracuj.pl nie pozwala programom pobierać ofert, więc didIJJIT się z nim nie łączy. Zbiera je **wtyczka** (wersja 1.3.0+),
+ale tylko ze stron, które **sam otwierasz** w przeglądarce — niczego nie pobiera w tle. Zakładka **pracuj.pl** w programie prowadzi krok po kroku:
+
+1. **Zapisane wyszukiwania** — na pracuj.pl otwórz listę zapisanych wyszukiwań i kliknij **Importuj** na pasku didIJJIT.
+   Możesz też na dowolnej liście ofert kliknąć **Dodaj wyszukiwanie** albo wkleić jej adres w zakładce pracuj.pl.
+2. **Oferty** — gdy otworzysz zapisane wyszukiwanie (np. linkiem z zakładki pracuj.pl), oferty z tej strony trafiają na listę
+   z oznaczeniem *pracuj.pl* (kategoria „pracuj.pl” w filtrze **Pokaż**). Kolejne strony wyników zapisują się, gdy je przejrzysz.
+   Na liście ofert pracuj.pl przy firmach, do których już aplikowałeś, pojawia się żółty znaczek.
+3. **Twoje aplikacje** — otwórz na pracuj.pl listę swoich aplikacji i kliknij **Pokaż i zapisz**. Trafią do „Moich aplikacji”
+   (bez duplikatów), więc ostrzeżenia zadziałają też dla ofert z justjoin.it.
+
+Ta sama firma jest rozpoznawana niezależnie od serwisu i zapisu nazwy („Globex Sp. z o.o.” = „GLOBEX”).
+Ostrzeżenie **„na to samo stanowisko”** pojawia się, gdy zgadza się firma i nazwa stanowiska po pominięciu poziomu
+i dopisków (np. „Senior Python Developer (K/M)” = „Python Developer”). To tylko ostrzeżenie — nic nie jest ukrywane automatycznie.
+
+Z Ustawień do ofert z pracuj.pl stosowane są tylko wykluczenia (słowa i firmy); resztę filtrów ma samo wyszukiwanie.
+Oferty z pracuj.pl niewidziane od 30 dni znikają z listy (te ze statusem lub notatką trafiają do „Wygasłych”).
+
 ### Import z historii przeglądarek
 
 Zakładka **Import z historii** szuka w historii (z ostatniego roku):
@@ -143,16 +166,19 @@ do folderu z przyciskiem „Kopiuj” i pozwala pobrać wtyczkę jako ZIP — in
 
 1. Wejdź na `about:debugging#/runtime/this-firefox`.
 2. Kliknij **Załaduj tymczasowy dodatek** i wskaż plik `extension/manifest.json`.
-3. W `about:addons` → didIJJIT → **Uprawnienia** zezwól na dostęp do justjoin.it i localhost.
+3. W `about:addons` → didIJJIT → **Uprawnienia** zezwól na dostęp do justjoin.it, pracuj.pl i localhost.
 
 Firefox usuwa tymczasowe dodatki po zamknięciu przeglądarki. Żeby wtyczka zostawała na stałe, trzeba ją podpisać
 (bezpłatnie, jako dodatek „unlisted” na addons.mozilla.org).
 
-**Co robi wtyczka na stronie oferty justjoin.it:**
+**Co robi wtyczka na stronie oferty justjoin.it i pracuj.pl:**
 
 - zielony pasek — już aplikowałeś na tę ofertę;
 - żółty pasek — aplikowałeś do tej firmy na inne stanowisko (z datami);
 - po kliknięciu **Aplikuj / Apply** pyta: „Wysłałeś CV?”. „Tak, zapisz” dodaje aplikację do programu.
+  Na pracuj.pl pytanie czeka do 2 godzin, także po przejściu do formularza aplikacji.
+
+Na pracuj.pl wtyczka dodatkowo zbiera oferty z zapisanych wyszukiwań i importuje Twoje aplikacje — opis wyżej, w punkcie 3.
 
 Jeśli zmienisz port w `config.toml`, ustaw ten sam port w opcjach wtyczki.
 

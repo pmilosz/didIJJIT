@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "didIJJIT",
-  "version": "1.2.1",
-  "description": "Na justjoin.it pokazuje, czy już aplikowałeś do firmy, i pozwala zapisać wysłane CV w lokalnym programie didIJJIT.",
+  "version": "1.3.0",
+  "description": "Na justjoin.it i pracuj.pl pokazuje, czy już aplikowałeś do firmy, i pozwala zapisać wysłane CV w lokalnym programie didIJJIT.",
   "host_permissions": [
     "https://justjoin.it/*",
+    "https://*.pracuj.pl/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -24,6 +25,20 @@
       ],
       "js": [
         "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.pracuj.pl/*"
+      ],
+      "js": [
+        "common.js",
+        "pracuj-parse.js",
+        "pracuj.js"
       ],
       "css": [
         "content.css"

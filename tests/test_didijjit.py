@@ -255,3 +255,107 @@ def test_hide_applied_companies(client):
     client.delete(f"/api/applications/{app_id}")
     d = client.get("/api/offers", params={"view": "aktywne", "hide_applied": "true"}).json()
     assert {o["guid"] for o in d["offers"]} == {"g1", "g2"}
+
+
+# ===== pracuj.pl =====
+
+PRACUJ_URL = "https://www.pracuj.pl/praca/python-ai-engineer-gdansk,oferta,1004321987"
+
+
+def _pracuj_offer(**kw):
+    return {"url": PRACUJ_URL + "?s=abc", "title": "Python AI Engineer (K/M)", "company": "GLOBEX Sp. z o.o.",
+            "city": "Gdańsk", **kw}
+
+
+def test_old_database_is_migrated_without_losing_data(tmp_path, monkeypatch):
+    import sqlite3
+    path = tmp_path / "old.db"
+    monkeypatch.setattr(db, "DB_PATH", path)
+    old = sqlite3.connect(path)
+    # schemat sprzed wersji 1.4 (bez source/url) z jedną ofertą i statusem
+    old.executescript("""
+        create table offers (guid text primary key, slug text not null, title text not null, company text not null,
+          company_key text not null, city text, workplace text, experience text, category text, salary text,
+          apply_url text, published_at text, first_seen_at text not null, first_seen_refresh integer,
+          last_seen_at text not null, last_seen_refresh integer, active integer not null default 1,
+          status text not null default 'nowa', status_at text, note text not null default '');
+        insert into offers (guid, slug, title, company, company_key, first_seen_at, last_seen_at, status, note)
+          values ('g1', 'acme-dev', 'Dev', 'Acme', 'acme', '2026-10-01', '2026-10-01', 'przejrzana', 'fajna');
+    """)
+    old.commit(); old.close()
+    db.init()
+    with db.session() as conn:
+        row = dict(conn.execute("select * from offers").fetchone())
+        assert conn.execute("select count(*) from pracuj_searches").fetchone()[0] == 0
+    assert row["source"] == "jjit" and row["status"] == "przejrzana" and row["note"] == "fajna" and row["url"] == ""
+
+
+def test_pracuj_offers_survive_jjit_refresh_and_warn_about_same_position(client):
+    client.post("/api/refresh")
+    r = client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer(), _pracuj_offer(url="https://x.pl/zle")]}).json()
+    assert r == {"received": 2, "added": 1}
+    # ponowne przesłanie tej samej oferty jej nie dubluje
+    assert client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer()]}).json()["added"] == 0
+    client.post("/api/refresh")
+    rows = {o["guid"]: o for o in client.get("/api/offers?view=aktywne").json()["offers"]}
+    p = rows["pracuj:1004321987"]
+    assert p["source"] == "pracuj" and p["url"] == PRACUJ_URL and p["fresh"] and p["category"] == "pracuj"
+    # do Globexu aplikowano przez justjoin.it na „Senior Python AI Engineer” — to samo stanowisko
+    assert p["company_history"][0]["same_title"]
+    assert rows["g2"]["company_history"][0]["same_title"] is False
+    assert client.get("/api/offers", params={"view": "aktywne", "hide_applied": "true"}).json()["offers"] == []
+
+
+def test_pracuj_offers_respect_exclusions(client, tmp_path, monkeypatch):
+    from didijjit import app as app_module
+    cfg = app_module.config.load()
+    cfg.exclude_keywords = ["ai engineer"]
+    monkeypatch.setattr(app_module.config, "load", lambda: cfg)
+    assert client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer()]}).json()["added"] == 0
+
+
+def test_lookup_and_apply_on_pracuj_offer(client):
+    client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer(title="Data Engineer")]})
+    d = client.get("/api/lookup", params={"url": PRACUJ_URL + "#apply"}).json()
+    assert d["offer"]["guid"] == "pracuj:1004321987" and d["applied_here"] is None
+    assert d["company_history"][0]["title"] == "Senior Python AI Engineer"
+    assert client.post("/api/applied-from-page", json={"url": PRACUJ_URL, "company": "Globex"}).json()["ok"]
+    d = client.get("/api/lookup", params={"url": PRACUJ_URL}).json()
+    assert d["applied_here"]["url"] == PRACUJ_URL and d["offer"]["status"] == "aplikowalem"
+
+
+def test_pracuj_applications_import_skips_duplicates_and_links_offer(client):
+    client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer(title="Data Engineer")]})
+    items = [
+        {"company": "Globex", "title": "Data Engineer", "url": PRACUJ_URL, "applied_at": "2026-11-02"},
+        {"company": "Initech S.A.", "title": "Backend Developer", "url": ""},
+    ]
+    assert client.post("/api/pracuj/applications", json={"items": items}).json() == {"received": 2, "added": 2}
+    assert client.post("/api/pracuj/applications", json={"items": items}).json()["added"] == 0
+    apps = {a["title"]: a for a in client.get("/api/applications").json()}
+    assert apps["Data Engineer"]["offer_guid"] == "pracuj:1004321987" and apps["Data Engineer"]["source"] == "pracuj"
+    assert "data nieznana" in apps["Backend Developer"]["note"]
+    assert client.post("/api/companies/applied", json={"companies": ["INITECH", "Nowa Firma"]}).json() == {
+        "INITECH": apps["Backend Developer"]["applied_at"]}
+
+
+def test_pracuj_search_urls():
+    from didijjit import pracuj
+    a = pracuj.search_key("https://it.pracuj.pl/praca/gdansk;wp?rd=30&its=backend&pn=3&utm_source=x")
+    assert a == "https://it.pracuj.pl/praca/gdansk;wp?its=backend"
+    assert pracuj.search_key(PRACUJ_URL) == "" and pracuj.search_key("https://justjoin.it/?x=1") == ""
+    assert pracuj.search_key("https://www.pracuj.pl/") == ""
+    assert pracuj.offer_id("https://www.pracuj.pl/praca/a,oferta,123?x") == "123"
+
+
+def test_pracuj_saved_searches(client):
+    url = "https://it.pracuj.pl/praca?its=backend&pn=2"
+    r = client.post("/api/pracuj/searches", json={"searches": [{"url": url, "name": "Backend"}, {"url": "https://x.pl"}]})
+    assert r.json() == {"added": 1}
+    assert client.post("/api/pracuj/searches", json={"searches": [{"url": "https://x.pl"}]}).status_code == 400
+    assert client.get("/api/pracuj/search-known", params={"url": "https://it.pracuj.pl/praca?its=backend"}).json()["known"]
+    client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer()], "search_url": url})
+    s = client.get("/api/pracuj/searches").json()[0]
+    assert s["name"] == "Backend" and s["last_count"] == 1 and s["last_visit_at"]
+    client.post("/api/pracuj/searches/delete", json={"url": s["url"]})
+    assert client.get("/api/pracuj/searches").json() == []
