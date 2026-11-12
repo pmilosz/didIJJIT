@@ -3,7 +3,10 @@
 ## 1.4.0 — w przygotowaniu
 
 **pracuj.pl** — drugie źródło ofert i aplikacji (przez wtyczkę, ze stron, które sam otwierasz; program nie łączy się z pracuj.pl):
-- import zapisanych wyszukiwań; oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*;
+- zapisane wyszukiwania z konta pracuj.pl importują się same (prowadzą do www.pracuj.pl, czyli wszystkich kategorii);
+  oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*, bez „ofert rekomendowanych”;
+- ten sam filtr zapisany różnie w adresie („/praca/php;kw/gdynia;wp” i „/praca?kw=php&wp=Gdynia”) to jedno wyszukiwanie;
+- pasek mówi wprost, gdy program jest w starszej wersji i trzeba go uruchomić ponownie;
 - nowa zakładka **pracuj.pl** z listą wyszukiwań (otwórz / usuń / dodaj adres ręcznie) i instrukcją;
 - import listy „Moje aplikacje” z pracuj.pl do rejestru aplikacji, bez duplikatów;
 - pasek „już aplikowałeś do tej firmy” i pytanie „Wysłałeś CV?” na stronach ofert pracuj.pl;

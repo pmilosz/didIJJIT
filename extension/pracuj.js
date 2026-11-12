@@ -10,7 +10,15 @@
   const PENDING_TTL = 2 * 3600e3; // pytanie „Wysłałeś CV?” czeka 2 godziny, także po przejściu do formularza
   let lastUrl = "", runId = 0, current = null;
 
-  const offline = (r) => r.offline && (show("off", "nie działa — uruchom program, żeby widzieć historię aplikacji."), true);
+  // brak programu albo stara wersja programu (bez obsługi pracuj.pl) — mówimy to wprost zamiast milczeć
+  function offline(r) {
+    if (r.offline) { show("off", "nie działa — uruchom program, żeby widzieć historię aplikacji."); return true; }
+    if (!r.ok && r.data?.detail === "Not Found") {
+      show("off", "program didIJJIT jest w starszej wersji — zamknij go i uruchom ponownie (run.bat / run.sh), żeby działał na pracuj.pl.");
+      return true;
+    }
+    return false;
+  }
 
   // ===== odczyt strony =====
   function jsonRoots() {
@@ -21,26 +29,36 @@
     return roots;
   }
 
-  // zapasowo: karty ofert w HTML (linki „…,oferta,123”), gdy strona nie ma danych w JSON-ie
+  // oferty polecane („Oferty rekomendowane dla Ciebie”, „Zobacz też”) to nie wyniki wyszukiwania
+  const RECOMMENDED = '[data-test="recommended-offer"], [data-test="section-recommended-offers"], [data-test="more-offers-box"], [data-test*="recommend"]';
+
+  // karty ofert w HTML: <div data-test="default-offer" data-test-offerid="…"> z polami data-test="offer-title" itd.
   function fromDom() {
     const out = new Map();
-    for (const a of document.querySelectorAll('a[href*=",oferta,"]')) {
-      const id = P.offerId(a.href);
+    const cards = [...document.querySelectorAll("[data-test-offerid]")];
+    // zapasowo: dowolne linki „…,oferta,123”, gdy strona nie ma znaczników kart
+    if (!cards.length) document.querySelectorAll('a[href*=",oferta,"]').forEach((a) => cards.push(a.closest("article, li") || a.parentElement?.parentElement));
+    for (const card of cards) {
+      if (!card || card.closest(RECOMMENDED)) continue;
+      const link = card.querySelector('a[data-test="link-offer"], a[href*=",oferta,"]') || (card.matches("a") ? card : null);
+      const id = card.dataset.testOfferid || P.offerId(link?.href);
       if (!id || out.has(id)) continue;
-      const card = a.closest('[data-test*="offer"], article, li') || a.parentElement?.parentElement;
-      if (!card) continue;
-      const pick = (sel) => card.querySelector(sel)?.textContent?.trim() || "";
-      const title = pick('[data-test*="title"], [data-test*="position"], h2, h3') || a.textContent.trim();
-      const company = pick('[data-test*="company"], [data-test*="employer"]');
+      const pick = (sel) => (card.querySelector(sel)?.textContent || "").replace(/\s+/g, " ").trim();
+      const title = pick('[data-test="offer-title"], [data-test="link-offer-title"], h2, h3') ||
+        (link?.title || "").replace(/^Zobacz ofertę\s*/i, "");
+      const company = pick('[data-test="text-company-name"], [data-test*="company-name"], [data-test*="employer"]');
+      const url = P.offerId(link?.href) ? P.cleanUrl(link.href) : `https://www.pracuj.pl/praca/oferta,oferta,${id}`;
       if (!title || !company || title.length > 200) continue;
-      out.set(id, { id, url: P.cleanUrl(a.href), title, company, city: pick('[data-test*="location"], [data-test*="workplace"]'),
-        workplace: "", experience: "", salary: pick('[data-test*="salary"]'), published_at: "", applied_at: P.toDate(card.textContent) });
+      out.set(id, { id, url, title, company, city: pick('[data-test="text-region"]'), workplace: pick('[data-test="offer-additional-info-0"]'),
+        experience: "", salary: pick('[data-test="offer-salary"]'), published_at: "", applied_at: P.toDate(card.textContent) });
     }
     return [...out.values()];
   }
 
   function items() {
-    const fromJs = P.fromJson(jsonRoots());
+    const recommended = new Set([...document.querySelectorAll("[data-test-offerid]")]
+      .filter((c) => c.closest(RECOMMENDED)).map((c) => c.dataset.testOfferid));
+    const fromJs = P.fromJson(jsonRoots()).filter((x) => !recommended.has(x.id));
     // dopełniamy tym, co widać w HTML (np. dane doładowane po wejściu na stronę)
     const ids = new Set(fromJs.map((x) => x.id));
     return [...fromJs, ...fromDom().filter((x) => !ids.has(x.id))];
@@ -92,14 +110,28 @@
   }
   const send = (path, body) => api(path, body);
 
-  async function listPage(found) {
-    // znaczki przy firmach, do których już wysłano CV
-    const r = await api("/api/companies/applied", { companies: [...new Set(found.map((x) => x.company))] });
-    if (offline(r)) return;
+  // wszystkie oferty na stronie (także polecane) — do znaczków „już aplikowałeś do tej firmy”
+  function allCards() {
+    const out = [];
+    for (const card of document.querySelectorAll("[data-test-offerid]")) {
+      const company = card.querySelector('[data-test="text-company-name"]')?.textContent?.trim();
+      if (company) out.push({ id: card.dataset.testOfferid, company });
+    }
+    return out;
+  }
+
+  async function markCompanies(found) {
+    const all = [...found, ...allCards()];
+    if (!all.length) return true;
+    const r = await api("/api/companies/applied", { companies: [...new Set(all.map((x) => x.company))] });
+    if (offline(r)) return false;
     const applied = r.data || {};
-    for (const it of found) {
+    for (const it of all) {
       if (!applied[it.company]) continue;
-      for (const a of document.querySelectorAll(`a[href*=",oferta,${it.id}"]`)) {
+      const cards = document.querySelectorAll(`[data-test-offerid="${it.id}"]`);
+      const spots = cards.length ? [...cards].map((c) => c.querySelector('[data-test="offer-title"]') || c.querySelector('[data-test="text-company-name"]')).filter(Boolean)
+        : [...document.querySelectorAll(`a[href*=",oferta,${it.id}"]`)].slice(0, 1);
+      for (const a of spots) {
         if (a.dataset.didijjit) continue;
         a.dataset.didijjit = "1";
         const b = document.createElement("span");
@@ -108,11 +140,24 @@
         a.insertAdjacentElement("afterend", b);
       }
     }
+    return true;
+  }
+
+  async function listPage(found) {
+    if (!(await markCompanies(found))) return;
+    const zero = !found.length && !!document.querySelector('[data-test="zero-offers-section"]');
+    if (!found.length && !zero) return;
     const known = (await api(`/api/pracuj/search-known?${new URLSearchParams({ url: location.href })}`)).data || {};
     const save = async () => {
       const s = await api("/api/pracuj/offers", { offers: found, search_url: location.href });
       return s.ok ? s.data : null;
     };
+    if (zero) {
+      show(known.known ? "done" : "warn", `To wyszukiwanie nie ma teraz ofert${location.hostname.startsWith("www.") ? "" :
+        ` w serwisie <b>${esc(location.hostname)}</b> — spróbuj tego samego wyszukiwania na www.pracuj.pl (wszystkie kategorie)`}.` +
+        " Oferty polecane przez pracuj.pl nie trafiają do didIJJIT.");
+      return;
+    }
     if (known.known) {
       const s = await save();
       if (s) {
@@ -175,15 +220,29 @@
     return true;
   }
 
+  // zapisane wyszukiwania z konta pracuj.pl trafiają do didIJJIT same (raz na wizytę w serwisie)
+  let alertsDone = false;
+  async function importAlerts() {
+    if (alertsDone) return false;
+    const alerts = P.jobAlerts(jsonRoots());
+    if (!alerts.length) return false;
+    alertsDone = true;
+    const r = await api("/api/pracuj/searches", { searches: alerts, auto: true });
+    if (offline(r) || !r.data?.added) return !r.ok;
+    show("done", `Zaimportowano zapisane wyszukiwania z pracuj.pl: <b>${r.data.added}</b>. Otwieraj je z zakładki <b>pracuj.pl</b> w programie — oferty zapiszą się same.`);
+    return true;
+  }
+
   async function route() {
     const my = ++runId;
     if (await pendingAsk()) return;
     if (my !== runId) return;
     if (isOffer()) return offerPage();
+    if (await importAlerts()) return;
     if (isSavedSearches() && savedSearchesPage()) return;
     const found = items();
     if (isApplications()) return applicationsPage(found);
-    if (found.length) return listPage(found);
+    return listPage(found);
   }
 
   document.addEventListener("click", (e) => {

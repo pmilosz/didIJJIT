@@ -64,3 +64,17 @@ def test_applications_with_dates():
 def test_dates():
     assert run("['2026-01-03T10:00', 'wysłano 7.3.2026', 'dzisiaj', 'coś'].map((s) => P.toDate(s, new Date(2026, 10, 12)))",
                None) == ["2026-01-03", "2026-03-07", "2026-11-12", ""]
+
+
+def test_saved_searches_from_job_alerts():
+    # budowa jak na pracuj.pl: props.pageProps.dehydratedState.queries[].state.data (zalogowany użytkownik)
+    page = {"props": {"pageProps": {"dehydratedState": {"queries": [{"queryKey": ["jobAlerts"], "state": {"data": [
+        {"id": "a1", "name": "php", "criteria": [{"key": "kw", "value": "php"}],
+         "jobAlertOffersAbsoluteUri": "https://inzynieria.pracuj.pl/praca?kw=php"},
+        {"id": "a2", "name": "php - Gdynia + 30 km",
+         "jobAlertOffersAbsoluteUri": "https://inzynieria.pracuj.pl/praca?kw=php&rd=30&wp=Gdynia"},
+    ]}}, {"queryKey": ["jobOffers"], "state": {"data": {"groupedOffers": [], "offersTotalCount": 0}}}]}}}}
+    assert run("P.jobAlerts([data])", page) == [
+        {"url": "https://inzynieria.pracuj.pl/praca?kw=php", "name": "php"},
+        {"url": "https://inzynieria.pracuj.pl/praca?kw=php&rd=30&wp=Gdynia", "name": "php - Gdynia + 30 km"}]
+    assert run("P.fromJson([data])", page) == []

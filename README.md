@@ -120,10 +120,12 @@ Gdy oznaczysz „Aplikowałem”, program zapyta o datę. Od tej chwili każda o
 pracuj.pl nie pozwala programom pobierać ofert, więc didIJJIT się z nim nie łączy. Zbiera je **wtyczka** (wersja 1.3.0+),
 ale tylko ze stron, które **sam otwierasz** w przeglądarce — niczego nie pobiera w tle. Zakładka **pracuj.pl** w programie prowadzi krok po kroku:
 
-1. **Zapisane wyszukiwania** — na pracuj.pl otwórz listę zapisanych wyszukiwań i kliknij **Importuj** na pasku didIJJIT.
-   Możesz też na dowolnej liście ofert kliknąć **Dodaj wyszukiwanie** albo wkleić jej adres w zakładce pracuj.pl.
+1. **Zapisane wyszukiwania** — importują się same, gdy wejdziesz na dowolną stronę pracuj.pl, będąc zalogowanym.
+   Prowadzą do www.pracuj.pl (wszystkie kategorie), nawet jeśli zapisałeś je np. na inzynieria.pracuj.pl.
+   Wyszukiwanie usunięte w programie nie wraca. Możesz też na dowolnej liście ofert kliknąć **Dodaj wyszukiwanie** albo wkleić jej adres w zakładce pracuj.pl.
 2. **Oferty** — gdy otworzysz zapisane wyszukiwanie (np. linkiem z zakładki pracuj.pl), oferty z tej strony trafiają na listę
    z oznaczeniem *pracuj.pl* (kategoria „pracuj.pl” w filtrze **Pokaż**). Kolejne strony wyników zapisują się, gdy je przejrzysz.
+   „Oferty rekomendowane” przez pracuj.pl są pomijane.
    Na liście ofert pracuj.pl przy firmach, do których już aplikowałeś, pojawia się żółty znaczek.
 3. **Twoje aplikacje** — otwórz na pracuj.pl listę swoich aplikacji i kliknij **Pokaż i zapisz**. Trafią do „Moich aplikacji”
    (bez duplikatów), więc ostrzeżenia zadziałają też dla ofert z justjoin.it.

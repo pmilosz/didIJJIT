@@ -342,9 +342,13 @@ def test_pracuj_applications_import_skips_duplicates_and_links_offer(client):
 def test_pracuj_search_urls():
     from didijjit import pracuj
     a = pracuj.search_key("https://it.pracuj.pl/praca/gdansk;wp?rd=30&its=backend&pn=3&utm_source=x")
-    assert a == "https://it.pracuj.pl/praca/gdansk;wp?its=backend"
-    assert pracuj.search_key(PRACUJ_URL) == "" and pracuj.search_key("https://justjoin.it/?x=1") == ""
-    assert pracuj.search_key("https://www.pracuj.pl/") == ""
+    assert a == "https://it.pracuj.pl/praca?its=backend&rd=30&wp=gdansk"
+    assert pracuj.search_key(PRACUJ_URL) == "" and pracuj.search_key("https://justjoin.it/praca?x=1") == ""
+    assert pracuj.search_key("https://www.pracuj.pl/") == "" and pracuj.search_key("https://www.pracuj.pl/praca") == ""
+    # ten sam filtr zapisany w ścieżce i w parametrach, w różnych serwisach pracuj.pl
+    assert pracuj.same_search("https://inzynieria.pracuj.pl/praca/php;kw/gdynia;wp?rd=30&pn=2",
+                              "https://www.pracuj.pl/praca?kw=php&rd=30&wp=Gdynia")
+    assert not pracuj.same_search("https://www.pracuj.pl/praca?kw=php", "https://www.pracuj.pl/praca?kw=php&rd=30")
     assert pracuj.offer_id("https://www.pracuj.pl/praca/a,oferta,123?x") == "123"
 
 
@@ -359,3 +363,18 @@ def test_pracuj_saved_searches(client):
     assert s["name"] == "Backend" and s["last_count"] == 1 and s["last_visit_at"]
     client.post("/api/pracuj/searches/delete", json={"url": s["url"]})
     assert client.get("/api/pracuj/searches").json() == []
+
+
+def test_pracuj_auto_import_of_saved_searches(client):
+    alerts = {"searches": [{"url": "https://inzynieria.pracuj.pl/praca?kw=php&rd=30&wp=Gdynia", "name": "php - Gdynia + 30 km"}],
+              "auto": True}
+    assert client.post("/api/pracuj/searches", json=alerts).json() == {"added": 1}
+    s = client.get("/api/pracuj/searches").json()[0]
+    assert s["url"] == "https://www.pracuj.pl/praca?kw=php&rd=30&wp=gdynia"
+    # strona wyników w zapisie „ścieżkowym” to to samo wyszukiwanie
+    assert client.get("/api/pracuj/search-known", params={"url": "https://www.pracuj.pl/praca/php;kw/gdynia;wp?rd=30"}).json()["known"]
+    # usunięte w programie nie wraca przy kolejnym automatycznym imporcie, ale można je dodać ręcznie
+    client.post("/api/pracuj/searches/delete", json={"url": s["url"]})
+    assert client.post("/api/pracuj/searches", json=alerts).json() == {"added": 0}
+    assert client.get("/api/pracuj/searches").json() == []
+    assert client.post("/api/pracuj/searches", json={"searches": alerts["searches"]}).json() == {"added": 1}

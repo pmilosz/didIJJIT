@@ -4,7 +4,7 @@ Program nie łączy się z pracuj.pl. Oferty i aplikacje przysyła wtyczka ze st
 w przeglądarce (pracuj.pl chroni strony przed automatycznym pobieraniem).
 """
 import re
-from urllib.parse import parse_qsl, urlencode, urlsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit
 
 from .config import Config
 from .db import company_key
@@ -12,7 +12,7 @@ from .db import company_key
 _OFFER = re.compile(r"^https?://([a-z0-9-]+\.)*pracuj\.pl/.*,oferta,(\d+)", re.IGNORECASE)
 _HOST = re.compile(r"^([a-z0-9-]+\.)*pracuj\.pl$", re.IGNORECASE)
 # parametry, które nie zmieniają wyników wyszukiwania (strona wyników, śledzenie)
-_SKIP_PARAMS = {"pn", "page", "searchid", "s", "ref", "sc", "rd"}
+_SKIP_PARAMS = {"pn", "page", "rop", "searchid", "s", "ref", "sc", "sug"}
 
 
 def offer_id(url: str) -> str | None:
@@ -29,21 +29,37 @@ def clean_url(url: str) -> str:
     return (url or "").strip().split("?")[0].split("#")[0]
 
 
-def search_key(url: str) -> str:
-    """Znormalizowany adres wyszukiwania: bez numeru strony i parametrów śledzących. Pusty, jeśli to nie wyszukiwanie."""
+def _search_parts(url: str) -> tuple[str, list[tuple[str, str]]] | None:
+    """(host, posortowane filtry) wyszukiwania. Filtry z ścieżki („/praca/php;kw/gdynia;wp”) i z parametrów
+    („?kw=php&wp=Gdynia”) dają to samo — pracuj.pl używa obu zapisów."""
     try:
         u = urlsplit((url or "").strip())
     except ValueError:
-        return ""
+        return None
     if u.scheme not in ("http", "https") or not _HOST.match(u.hostname or "") or offer_id(url):
-        return ""
-    path = u.path.rstrip("/") or "/"
-    params = sorted((k, v) for k, v in parse_qsl(u.query, keep_blank_values=False)
-                    if k.lower() not in _SKIP_PARAMS and not k.lower().startswith("utm_"))
-    # sama strona główna bez filtrów to nie wyszukiwanie
-    if path == "/" and not params:
-        return ""
-    return f"https://{u.hostname.lower()}{path}" + (f"?{urlencode(params)}" if params else "")
+        return None
+    segs = [unquote(x) for x in u.path.split("/") if x]
+    if not segs or segs[0].lower() != "praca":
+        return None
+    params = [(seg.rsplit(";", 1)[1], seg.rsplit(";", 1)[0]) for seg in segs[1:] if ";" in seg]
+    params += parse_qsl(u.query, keep_blank_values=False)
+    params = sorted({(k.lower(), v.strip().lower()) for k, v in params
+                     if k.lower() not in _SKIP_PARAMS and not k.lower().startswith("utm_") and v.strip()})
+    if not params:  # sama lista wszystkich ofert to nie wyszukiwanie
+        return None
+    return u.hostname.lower(), params
+
+
+def search_key(url: str) -> str:
+    """Znormalizowany adres wyszukiwania (do zapisu i otwierania). Pusty, jeśli to nie wyszukiwanie."""
+    parts = _search_parts(url)
+    return f"https://{parts[0]}/praca?{urlencode(parts[1])}" if parts else ""
+
+
+def same_search(a: str, b: str) -> bool:
+    """Te same filtry, niezależnie od serwisu (www / it / inzynieria.pracuj.pl) i zapisu adresu."""
+    pa, pb = _search_parts(a), _search_parts(b)
+    return bool(pa and pb) and pa[1] == pb[1]
 
 
 def allowed(title: str, company: str, cfg: Config) -> bool:

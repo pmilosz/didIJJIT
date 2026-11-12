@@ -86,6 +86,22 @@ globalThis.didijjitParse = (() => {
     return [...out.values()];
   }
 
-  return { offerId, cleanUrl, toDate, fromJson };
+  // zapisane wyszukiwania z konta (zalogowany użytkownik ma je w danych każdej strony jako „jobAlerts”)
+  function jobAlerts(roots) {
+    const out = new Map(), seen = new Set();
+    const walk = (v, depth) => {
+      if (!v || typeof v !== "object" || depth > 40 || seen.has(v)) return;
+      seen.add(v);
+      if (!Array.isArray(v) && /^https?:\/\/([a-z0-9-]+\.)*pracuj\.pl\/praca/i.test(str(v.jobAlertOffersAbsoluteUri))) {
+        out.set(v.jobAlertOffersAbsoluteUri, { url: v.jobAlertOffersAbsoluteUri, name: str(v.name) });
+        return;
+      }
+      (Array.isArray(v) ? v : Object.values(v)).forEach((x) => walk(x, depth + 1));
+    };
+    roots.forEach((r) => walk(r, 0));
+    return [...out.values()];
+  }
+
+  return { offerId, cleanUrl, toDate, fromJson, jobAlerts };
 })();
 if (typeof module !== "undefined") module.exports = globalThis.didijjitParse;

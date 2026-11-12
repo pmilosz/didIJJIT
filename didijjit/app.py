@@ -435,10 +435,11 @@ def pracuj_offers(body: PracujOffersIn):
                     "values (?,?,?,?,?,?,?,?,'pracuj',?,'',?,?,?,?,'pracuj')",
                     (guid, guid, *fields[:6], fields[6], fields[7] or now, fields[8], now, now),
                 )
-        key = pracuj.search_key(body.search_url) if body.search_url else ""
-        if key:
-            conn.execute("update pracuj_searches set last_visit_at = ?, last_count = ? where url = ?",
-                         (now, len(body.offers), key))
+        if body.search_url:
+            for s in conn.execute("select url from pracuj_searches").fetchall():
+                if pracuj.same_search(s["url"], body.search_url):
+                    conn.execute("update pracuj_searches set last_visit_at = ?, last_count = ? where url = ?",
+                                 (now, len(body.offers), s["url"]))
         # oferty niewidziane od 30 dni: nietknięte usuwamy, pozostałe oznaczamy jako wygasłe
         old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat(timespec="seconds")
         conn.execute(
@@ -452,7 +453,7 @@ def pracuj_offers(body: PracujOffersIn):
 @app.get("/api/pracuj/searches")
 def pracuj_searches():
     with db.session() as conn:
-        return [dict(r) for r in conn.execute("select * from pracuj_searches order by added_at")]
+        return [dict(r) for r in conn.execute("select * from pracuj_searches where hidden = 0 order by added_at")]
 
 
 class SearchIn(BaseModel):
@@ -462,6 +463,9 @@ class SearchIn(BaseModel):
 
 class SearchesIn(BaseModel):
     searches: list[SearchIn]
+    # automatyczny import zapisanych wyszukiwań z konta pracuj.pl: usunięte w programie nie wracają,
+    # a adres prowadzi do www.pracuj.pl (wszystkie kategorie, nie tylko np. inzynieria.pracuj.pl)
+    auto: bool = False
 
 
 @app.post("/api/pracuj/searches")
@@ -471,22 +475,28 @@ def pracuj_add_searches(body: SearchesIn):
     with db.session() as conn:
         for s in body.searches[:100]:
             key = pracuj.search_key(s.url)
+            if key and body.auto:
+                key = "https://www.pracuj.pl/" + key.split("/", 3)[3]
             if not key:
                 if len(body.searches) == 1:
                     raise HTTPException(400, "To nie jest adres wyszukiwania ofert na pracuj.pl")
                 continue
-            cur = conn.execute("insert or ignore into pracuj_searches (url, name, added_at) values (?,?,?)",
-                               (key, s.name.strip()[:200], _now()))
-            added += cur.rowcount
-            if s.name.strip():
-                conn.execute("update pracuj_searches set name = ? where url = ? and name = ''", (s.name.strip()[:200], key))
+            same = [r for r in conn.execute("select url, hidden from pracuj_searches") if pracuj.same_search(r["url"], key)]
+            if same:
+                if not body.auto and same[0]["hidden"]:  # ręcznie dodane jeszcze raz — przywracamy
+                    conn.execute("update pracuj_searches set hidden = 0 where url = ?", (same[0]["url"],))
+                    added += 1
+                continue
+            conn.execute("insert into pracuj_searches (url, name, added_at) values (?,?,?)", (key, s.name.strip()[:200], _now()))
+            added += 1
     return {"added": added}
 
 
 @app.post("/api/pracuj/searches/delete")
 def pracuj_delete_search(body: SearchIn):
     with db.session() as conn:
-        conn.execute("delete from pracuj_searches where url = ?", (body.url,))
+        # zostaje ukryte, żeby automatyczny import z pracuj.pl go nie przywracał
+        conn.execute("update pracuj_searches set hidden = 1 where url = ?", (body.url,))
     return {"ok": True}
 
 
@@ -495,7 +505,8 @@ def pracuj_search_known(url: str):
     """Dla wtyczki: czy oglądana lista ofert to zapisane wyszukiwanie."""
     key = pracuj.search_key(url)
     with db.session() as conn:
-        known = bool(key) and conn.execute("select 1 from pracuj_searches where url = ?", (key,)).fetchone() is not None
+        known = bool(key) and any(pracuj.same_search(r["url"], url)
+                                  for r in conn.execute("select url from pracuj_searches where hidden = 0"))
     return {"known": known, "key": key}
 
 

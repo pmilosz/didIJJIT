@@ -65,7 +65,8 @@ create table if not exists pracuj_searches (
     name text not null default '',
     added_at text not null,
     last_visit_at text,
-    last_count integer
+    last_count integer,
+    hidden integer not null default 0
 );
 """
 
@@ -128,6 +129,8 @@ def init() -> None:
             conn.execute("alter table offers add column source text not null default 'jjit'")
         if "url" not in cols:
             conn.execute("alter table offers add column url text not null default ''")
+        if "hidden" not in {r[1] for r in conn.execute("pragma table_info(pracuj_searches)")}:
+            conn.execute("alter table pracuj_searches add column hidden integer not null default 0")
         if "last_seen_refresh" not in cols:
             conn.execute("alter table offers add column last_seen_refresh integer")
             conn.execute("update offers set last_seen_refresh = first_seen_refresh")
