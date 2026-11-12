@@ -40,6 +40,10 @@ VIEWS = {
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init()
+    # oferty z pracuj.pl z wersji, gdy miały wspólną kategorię „pracuj” — przypisujemy kategorie justjoin.it
+    with db.session() as conn:
+        for o in conn.execute("select guid, title from offers where source = 'pracuj' and category = 'pracuj'").fetchall():
+            conn.execute("update offers set category = ? where guid = ?", (pracuj.category(o["title"]), o["guid"]))
     yield
 
 
@@ -428,19 +432,21 @@ def pracuj_offers(body: PracujOffersIn):
             guid = pracuj.guid(pid)
             fields = (o.title.strip(), o.company.strip(), db.company_key(o.company), o.city, o.workplace, o.experience,
                       o.salary, o.published_at, pracuj.clean_url(o.url))
+            cat = pracuj.category(o.title, body.search_url)
             if conn.execute("select 1 from offers where guid = ?", (guid,)).fetchone():
                 conn.execute(
                     "update offers set title=?, company=?, company_key=?, city=?, workplace=?, experience=?, salary=?, "
-                    "published_at=coalesce(nullif(?, ''), published_at), url=?, last_seen_at=?, active=1 where guid=?",
-                    (*fields, now, guid),
+                    "published_at=coalesce(nullif(?, ''), published_at), url=?, last_seen_at=?, active=1, category=? "
+                    "where guid=?",
+                    (*fields, now, cat, guid),
                 )
             else:
                 added += 1
                 conn.execute(
                     "insert into offers (guid, slug, title, company, company_key, city, workplace, experience, category, "
                     "salary, apply_url, published_at, url, first_seen_at, last_seen_at, source) "
-                    "values (?,?,?,?,?,?,?,?,'pracuj',?,'',?,?,?,?,'pracuj')",
-                    (guid, guid, *fields[:6], fields[6], fields[7] or now, fields[8], now, now),
+                    "values (?,?,?,?,?,?,?,?,?,?,'',?,?,?,?,'pracuj')",
+                    (guid, guid, *fields[:6], cat, fields[6], fields[7] or now, fields[8], now, now),
                 )
         if body.search_url:
             for s in conn.execute("select url from pracuj_searches").fetchall():

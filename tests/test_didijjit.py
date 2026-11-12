@@ -299,7 +299,7 @@ def test_pracuj_offers_survive_jjit_refresh_and_warn_about_same_position(client)
     client.post("/api/refresh")
     rows = {o["guid"]: o for o in client.get("/api/offers?view=aktywne").json()["offers"]}
     p = rows["pracuj:1004321987"]
-    assert p["source"] == "pracuj" and p["url"] == PRACUJ_URL and p["fresh"] and p["category"] == "pracuj"
+    assert p["source"] == "pracuj" and p["url"] == PRACUJ_URL and p["fresh"] and p["category"] == "python"
     # do Globexu aplikowano przez justjoin.it na „Senior Python AI Engineer” — to samo stanowisko
     assert p["company_history"][0]["same_title"]
     assert rows["g2"]["company_history"][0]["same_title"] is False
@@ -396,3 +396,14 @@ def test_pracuj_multi_value_filters_are_the_same_search():
                               "https://www.pracuj.pl/praca?kw=php&tc=0&wm=home-office&wm=hybrid&ws=0")
     assert pracuj.same_search("https://www.pracuj.pl/praca/ai;kw/it%20-%20rozw%C3%B3j;cc,5016/e-commerce;cc,5013?rd=30",
                               "https://www.pracuj.pl/praca?cc=5013&cc=5016&kw=ai&rd=30")
+
+
+def test_pracuj_offer_category_from_search_then_title(client):
+    php = "https://www.pracuj.pl/praca/php;kw/gdynia;wp?rd=30"
+    client.post("/api/pracuj/offers", json={"offers": [_pracuj_offer(title="Fullstack Developer (React)")], "search_url": php})
+    rows = client.get("/api/offers", params={"view": "aktywne", "category": "php"}).json()["offers"]
+    assert [o["guid"] for o in rows] == ["pracuj:1004321987"]
+    # bez słowa kluczowego w wyszukiwaniu decyduje nazwa stanowiska, a gdy nic nie pasuje — „Inne”
+    from didijjit import pracuj
+    assert pracuj.category("JavaScript Developer") == "javascript" and pracuj.category("Java Developer") == "java"
+    assert pracuj.category("Specjalista ds. GIS") == "other"

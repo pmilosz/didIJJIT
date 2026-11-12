@@ -5,6 +5,7 @@
 **pracuj.pl** — drugie źródło ofert i aplikacji (przez wtyczkę, ze stron, które sam otwierasz; program nie łączy się z pracuj.pl):
 - zapisane wyszukiwania z konta pracuj.pl importują się same (prowadzą do www.pracuj.pl, czyli wszystkich kategorii);
   oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*, bez „ofert rekomendowanych”;
+- oferty z pracuj.pl trafiają do kategorii justjoin.it (PHP, Python, AI…): według słowa z wyszukiwania, potem nazwy stanowiska;
 - ten sam filtr zapisany różnie w adresie („/praca/php;kw/gdynia;wp” i „/praca?kw=php&wp=Gdynia”) to jedno wyszukiwanie;
 - pasek mówi wprost, gdy program jest w starszej wersji i trzeba go uruchomić ponownie;
 - filtry z wieloma wartościami („wm=home-office,hybrid”) i kategorie w ścieżce są rozpoznawane jako to samo wyszukiwanie;

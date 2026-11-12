@@ -124,7 +124,9 @@ ale tylko ze stron, które **sam otwierasz** w przeglądarce — niczego nie pob
    Prowadzą do www.pracuj.pl (wszystkie kategorie), nawet jeśli zapisałeś je np. na inzynieria.pracuj.pl.
    Wyszukiwanie usunięte w programie nie wraca. Możesz też na dowolnej liście ofert kliknąć **Dodaj wyszukiwanie** albo wkleić jej adres w zakładce pracuj.pl.
 2. **Oferty** — gdy otworzysz zapisane wyszukiwanie (np. linkiem z zakładki pracuj.pl), oferty z tej strony trafiają na listę
-   z oznaczeniem *pracuj.pl* (kategoria „pracuj.pl” w filtrze **Pokaż**). Kolejne strony wyników zapisują się, gdy je przejrzysz.
+   z oznaczeniem *pracuj.pl*, w tych samych kategoriach co oferty z justjoin.it: najpierw według słowa z wyszukiwania
+   (wszystko z wyszukiwania „php” → PHP), a gdy go nie ma — według nazwy stanowiska; gdy nic nie pasuje — „Inne”.
+   Kolejne strony wyników zapisują się, gdy je przejrzysz.
    „Oferty rekomendowane” przez pracuj.pl są pomijane.
    Na liście ofert pracuj.pl przy firmach, do których już aplikowałeś, pojawia się żółty znaczek.
 3. **Twoje aplikacje** — otwórz na pracuj.pl listę swoich aplikacji i kliknij **Pokaż i zapisz**. Trafią do „Moich aplikacji”

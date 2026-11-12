@@ -71,6 +71,52 @@ def same_search(a: str, b: str) -> bool:
     return bool(pa and pb) and pa[1] == pb[1]
 
 
+# kategorie justjoin.it rozpoznawane po słowach (kolejność ma znaczenie: pierwsza pasująca wygrywa,
+# np. „Fullstack Developer (PHP / React)” → php, „Java Developer” ≠ „JavaScript”)
+_CATEGORY_RULES = [(cat, re.compile(rx, re.IGNORECASE)) for cat, rx in [
+    ("php", r"\bphp\b|laravel|symfony|wordpress|magento|drupal|joomla|prestashop|\byii\b"),
+    ("python", r"python|django|flask|fastapi|pandas"),
+    ("ai", r"\bai\b|\bml\b|\bllm|machine learning|uczeni[ea] maszynow|sztuczn\w* inteligencj|genai|data scien|deep learning|\bnlp\b|computer vision"),
+    ("net", r"\.net\b|\bc#|\bdotnet|asp\.net|blazor"),
+    ("java", r"\bjava\b(?!\s*script)|kotlin|spring\b"),
+    ("javascript", r"javascript|typescript|\breact\b(?!\s*native)|angular|\bvue|node\.?js|front[- ]?end|next\.?js"),
+    ("mobile", r"android|\bios\b|flutter|react native|swift\b|mobile|mobiln"),
+    ("go", r"golang|\bgo\b(?= developer| engineer| programista)"),
+    ("ruby", r"\bruby|\brails\b"),
+    ("scala", r"\bscala\b"),
+    ("c", r"c\+\+|\bembedded|\bc\b(?= developer| programista| engineer)|wbudowan"),
+    ("devops", r"devops|\bsre\b|cloud|chmur|kubernetes|\baws\b|azure|\bgcp\b|platform engineer"),
+    ("security", r"security|bezpiecze[nń]st|cyber|pentest|\bsoc\b|\bsiem\b"),
+    ("testing", r"\bqa\b|tester|test(?:ów|ow|ing|owanie|er)|automatyzacj\w* test"),
+    ("data", r"data engineer|big data|\betl\b|hurtowni|data warehouse|databricks|\bspark\b|in[żz]ynier danych"),
+    ("analytics", r"anali(?:tyk|tic|st)|\bbi\b|business intelligence|power ?bi|tableau"),
+    ("erp", r"\bsap\b|\berp\b|\bcrm\b|dynamics|salesforce|\babap\b"),
+    ("ux", r"\bux\b|\bui\b|designer|projektant"),
+    ("game", r"gamedev|game developer|unity|unreal|\bgier\b|\bgry\b"),
+    ("pm", r"project manager|product (?:owner|manager)|scrum master|kierownik projekt|\bpmo?\b|delivery manager"),
+    ("architecture", r"archite(?:kt|ct)"),
+    ("admin", r"administrator|sysadmin|admin(?:istracj)|\bnetwork|sieci"),
+    ("support", r"helpdesk|help desk|service desk|support|wsparci|serwisant"),
+    ("html", r"\bhtml|\bcss\b|webmaster"),
+]]
+
+
+def _match_category(text: str) -> str:
+    return next((cat for cat, rx in _CATEGORY_RULES if rx.search(text or "")), "")
+
+
+def search_keywords(url: str) -> str:
+    """Słowa kluczowe wyszukiwania (parametr kw), np. „php”."""
+    parts = _search_parts(url)
+    return " ".join(v for k, v in parts[1] if k == "kw") if parts else ""
+
+
+def category(title: str, search_url: str = "") -> str:
+    """Kategoria justjoin.it dla oferty z pracuj.pl: najpierw ze słów zapisanego wyszukiwania (lista „php” → PHP),
+    potem z nazwy stanowiska, a gdy nic nie pasuje — „Inne”."""
+    return _match_category(search_keywords(search_url)) or _match_category(title) or "other"
+
+
 def allowed(title: str, company: str, cfg: Config) -> bool:
     """Z ustawień programu stosujemy tylko wykluczenia — resztę filtrów ma samo zapisane wyszukiwanie."""
     t = title.lower()
