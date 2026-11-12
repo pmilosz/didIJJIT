@@ -1,30 +1,33 @@
 # Historia zmian
 
-## 1.4.0 — w przygotowaniu
+## 1.4.0 — 2026-11-12
 
-**pracuj.pl** — drugie źródło ofert i aplikacji (przez wtyczkę, ze stron, które sam otwierasz; program nie łączy się z pracuj.pl):
-- zapisane wyszukiwania z konta pracuj.pl importują się same (prowadzą do www.pracuj.pl, czyli wszystkich kategorii);
-  oferty z otwieranych wyszukiwań trafiają na listę z oznaczeniem *pracuj.pl*, bez „ofert rekomendowanych”;
-- oferty z pracuj.pl trafiają do kategorii justjoin.it (PHP, Python, AI…): według słowa z wyszukiwania, potem nazwy stanowiska;
-- ten sam filtr zapisany różnie w adresie („/praca/php;kw/gdynia;wp” i „/praca?kw=php&wp=Gdynia”) to jedno wyszukiwanie;
-- pasek mówi wprost, gdy program jest w starszej wersji i trzeba go uruchomić ponownie;
-- filtry z wieloma wartościami („wm=home-office,hybrid”) i kategorie w ścieżce są rozpoznawane jako to samo wyszukiwanie;
-- gdy wtyczka nie rozpozna ofert na stronie wyszukiwania, mówi o tym zamiast milczeć;
+### pracuj.pl — drugie źródło ofert i aplikacji
 
-**„Aplikowałem”** pokazuje też aplikacje, których oferty nie ma na liście (spoza Twoich filtrów, zapisane wtyczką,
-ręczne, z historii, z pracuj.pl) — w osobnej tabeli pod ofertami; licznik je uwzględnia.
-- nowa zakładka **pracuj.pl** z listą wyszukiwań (otwórz / usuń / dodaj adres ręcznie) i instrukcją;
-- import listy „Moje aplikacje” z pracuj.pl do rejestru aplikacji, bez duplikatów;
-- pasek „już aplikowałeś do tej firmy” i pytanie „Wysłałeś CV?” na stronach ofert pracuj.pl;
-- znaczek przy ofertach firm, do których już aplikowałeś, bezpośrednio na liście wyników pracuj.pl.
+Wtyczka czyta strony pracuj.pl, które **sam otwierasz** w przeglądarce. Program nie łączy się z pracuj.pl i niczego nie pobiera w tle.
 
-**Ostrzeżenie „na to samo stanowisko”** — oprócz tej samej firmy program rozpoznaje to samo stanowisko także między serwisami
-(pomija poziom i dopiski, np. „Senior Python Developer (K/M)” = „Python Developer”).
+- **Zapisane wyszukiwania** z konta pracuj.pl importują się same po wejściu na pracuj.pl. Prowadzą do www.pracuj.pl,
+  czyli do ofert ze wszystkich kategorii. Nowa zakładka **pracuj.pl** pozwala je otwierać, usuwać i dodawać ręcznie.
+- **Oferty** z otwieranych wyszukiwań trafiają na wspólną listę ze znaczkiem *pracuj.pl*, w kategoriach jak na justjoin.it:
+  według słowa z wyszukiwania (lista „php” → PHP), a bez niego według nazwy stanowiska. „Oferty rekomendowane” są pomijane.
+- **Pasek na stronie oferty pracuj.pl**, tak jak na justjoin.it: „już aplikowałeś do tej firmy” i pytanie „Wysłałeś CV?”
+  po kliknięciu „Aplikuj”. Pytanie czeka do 2 godzin, także po przejściu do formularza.
+- **Znaczek na liście wyników pracuj.pl** przy firmach, do których już wysłałeś CV.
+- **Import listy „Moje aplikacje”** z pracuj.pl do rejestru aplikacji, bez duplikatów.
 
-**Zgodność wstecz:** baza z poprzednich wersji jest uzupełniana automatycznie (nowe kolumny, nic nie jest usuwane);
-dotychczasowe oferty dostają źródło „justjoin.it”. Odświeżanie justjoin.it nie zmienia ofert z pracuj.pl.
+### Pozostałe zmiany
 
-**Wtyczka 1.3.0** — nowe uprawnienie do pracuj.pl. Po aktualizacji przeładuj wtyczkę na stronie rozszerzeń.
+- **„Już aplikowałeś na to stanowisko”** — oprócz tej samej firmy program rozpoznaje to samo stanowisko, także między
+  serwisami. Pomija poziom i dopiski, np. „Senior Python Developer (K/M)” = „Python Developer”. To tylko ostrzeżenie, nic nie jest ukrywane.
+- **„Aplikowałem”** pokazuje też aplikacje, których oferty nie ma na liście (spoza Twoich filtrów, ręczne, z historii,
+  z wtyczki). Są w osobnej tabeli pod ofertami, a licznik je uwzględnia.
+- Pasek wtyczki mówi wprost, gdy program trzeba uruchomić ponownie albo gdy nie rozpoznał ofert na stronie.
+
+### Aktualizacja
+
+- Baza z poprzednich wersji jest uzupełniana automatycznie: dochodzą nowe kolumny, nic nie jest usuwane.
+  Dotychczasowe oferty dostają źródło „justjoin.it”, a odświeżanie justjoin.it nie zmienia ofert z pracuj.pl.
+- **Wtyczka 1.3.0** ma nowe uprawnienie do pracuj.pl. Po `git pull` uruchom program ponownie i przeładuj wtyczkę na stronie rozszerzeń.
 
 ## 1.3.0 — 2026-11-11
 
