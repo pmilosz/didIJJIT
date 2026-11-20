@@ -153,6 +153,20 @@ def test_lookup_and_apply_from_extension(client):
     assert client.get("/api/lookup", params={"url": other, "company": "Nowa Firma"}).json()["applied_here"]
 
 
+
+def test_queued_save_from_extension_keeps_click_date_and_no_duplicates(client):
+    """Wtyczka dosyła zapis z kolejki (program był wyłączony): data kliknięcia, bez duplikatów."""
+    client.post("/api/refresh")
+    url = "https://justjoin.it/job-offer/globex-ml-engineer-gdynia-ai"
+    client.post("/api/applied-from-page", json={"url": url, "company": "Globex", "applied_at": "2026-11-17"})
+    assert client.get("/api/lookup", params={"url": url}).json()["applied_here"]["applied_at"] == "2026-11-17"
+    other = "https://justjoin.it/job-offer/silent-eight-ai-solutions-consultant-warszawa-ai"
+    body = {"url": other, "company": "SILENT EIGHT", "title": "AI Solutions Consultant", "applied_at": "2026-11-17"}
+    client.post("/api/applied-from-page", json=body)
+    client.post("/api/applied-from-page", json=body)  # ponowne wysłanie z kolejki
+    rows = [a for a in client.get("/api/applications").json() if a["company"] == "SILENT EIGHT"]
+    assert len(rows) == 1 and rows[0]["applied_at"] == "2026-11-17"
+
 def test_refresh_drops_untouched_offers_that_disappear(client, monkeypatch):
     from didijjit import app as app_module
     client.post("/api/refresh")

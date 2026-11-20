@@ -1,5 +1,15 @@
 # Historia zmian
 
+## 1.4.1 — 2026-11-20
+
+- **Wtyczka nie gubi już aplikacji, gdy program jest wyłączony.** Wcześniej „Tak, zapisz” przy wyłączonym programie
+  kończyło się komunikatem o błędzie i aplikacja przepadała. Teraz wtyczka zapamiętuje ją u siebie, z datą kliknięcia,
+  i przekazuje programowi przy najbliższym uruchomieniu. Program pokazuje wtedy, ile zaległych aplikacji dostał.
+  Dotyczy justjoin.it i pracuj.pl (wtyczka 1.4.0, trzeba ją przeładować w przeglądarce).
+- Po kliknięciu „Aplikowałem” na liście ofert program mówi, gdzie ta oferta teraz jest
+  (zakładki „Aplikowałem” i „Moje aplikacje”), bo z zakładki „Nowe” znika.
+- Ponowne wysłanie tej samej aplikacji z wtyczki nie tworzy duplikatu.
+
 ## 1.4.0 — 2026-11-12
 
 ### pracuj.pl — drugie źródło ofert i aplikacji

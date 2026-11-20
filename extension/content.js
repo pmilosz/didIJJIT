@@ -115,8 +115,9 @@
     }
     askingFor = "";
     const r = await send({ type: "applied", ...current });
-    if (r.ok) show("done", `Zapisano: aplikowałeś do <b>${esc(current.company)}</b> dzisiaj.`);
-    else show("off", "Nie udało się zapisać — czy program didIJJIT działa?");
+    if (r.queued) show("done", `Zapamiętano: aplikowałeś do <b>${esc(current.company)}</b> dzisiaj. Program jest wyłączony — wtyczka przekaże mu to, gdy go uruchomisz.`);
+    else if (r.ok) show("done", `Zapisano: aplikowałeś do <b>${esc(current.company)}</b> dzisiaj.`);
+    else show("off", "Nie udało się zapisać — program didIJJIT odrzucił zapis.");
   }
 
   // po kliknięciu „Aplikuj” pytamy, czy CV naprawdę poszło — wysłanie dzieje się w formularzu firmy

@@ -380,6 +380,7 @@ class PageApplyIn(BaseModel):
     url: str
     company: str
     title: str = ""
+    applied_at: date | None = None  # wtyczka podaje dzień kliknięcia, gdy wysyła zaległy zapis z kolejki
 
 
 @app.post("/api/applied-from-page")
@@ -388,10 +389,14 @@ def applied_from_page(body: PageApplyIn):
     with db.session() as conn:
         offer = _offer_for_url(conn, body.url)
     if offer:
-        return set_status(offer["guid"], StatusIn(status="aplikowalem"))
+        return set_status(offer["guid"], StatusIn(status="aplikowalem", applied_at=body.applied_at))
+    url = body.url.split("?")[0].split("#")[0]
     with db.session() as conn:
+        # ponowne wysłanie z kolejki wtyczki nie może zrobić duplikatu
+        if conn.execute("select 1 from applications where url = ?", (url,)).fetchone():
+            return {"ok": True}
         _insert_application(conn, ApplicationIn(
-            company=body.company, title=body.title, url=body.url.split("?")[0].split("#")[0], applied_at=date.today(),
+            company=body.company, title=body.title, url=url, applied_at=body.applied_at or date.today(),
             source="wtyczka",
         ))
         _link_applications(conn)

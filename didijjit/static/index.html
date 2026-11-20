@@ -443,6 +443,10 @@ async function setStatus(guid, status) {
     body.applied_at = d;
   }
   try { await api(`/api/offers/${guid}/status`, {method: "POST", body}); } catch (e) { return toast(e.message); }
+  // oferta znika z bieżącej zakładki — mówimy, gdzie jej szukać
+  const where = {aplikowalem: "Zapisano aplikację — jest w zakładkach „Aplikowałem” i „Moje aplikacje”",
+    przejrzana: "Przeniesiono do zakładki „Przejrzane”", nie_interesuje: "Przeniesiono do zakładki „Nie interesuje”"};
+  if (where[status] && view !== status && view !== "aktywne") toast(where[status]);
   await loadSummary(); render();
 }
 
@@ -662,6 +666,14 @@ $("#refresh").onclick = doRefresh;
 $("#q").oninput = (e) => { query = e.target.value; clearTimeout(e.target._h); e.target._h = setTimeout(render, 250); };
 
 api("/api/settings").then((d) => { meta = d; }).catch(() => {}).finally(() => loadSummary().then(render));
+// wtyczka dosyła zapisy z czasu, gdy program był wyłączony — pokazujemy je od razu
+new MutationObserver((_, obs) => {
+  const n = document.documentElement.dataset.didijjitFlushed;
+  if (!n) return;
+  obs.disconnect();
+  toast(`Wtyczka dosłała zaległe aplikacje: ${n}`);
+  loadSummary().then(render);
+}).observe(document.documentElement, {attributes: true, attributeFilter: ["data-didijjit-flushed"]});
 
 // aplikacje zapisane z wtyczki (na karcie justjoin.it) — odświeżamy listę bez przeładowania strony:
 // po powrocie na kartę i co 15 s, gdy karta jest widoczna; tylko gdy coś się zmieniło

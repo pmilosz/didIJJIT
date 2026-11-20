@@ -105,7 +105,8 @@
     }
     await storage.set(PENDING, null);
     const r = await send("/api/applied-from-page", info);
-    if (r.ok) show("done", `Zapisano: aplikowałeś do <b>${esc(info.company)}</b> dzisiaj.`);
+    if (r.queued) show("done", `Zapamiętano: aplikowałeś do <b>${esc(info.company)}</b> dzisiaj. Program jest wyłączony — wtyczka przekaże mu to, gdy go uruchomisz.`);
+    else if (r.ok) show("done", `Zapisano: aplikowałeś do <b>${esc(info.company)}</b> dzisiaj.`);
     else show("off", "Nie udało się zapisać — czy program didIJJIT działa?");
   }
   const send = (path, body) => api(path, body);
@@ -192,7 +193,8 @@
         const r = await api("/api/pracuj/applications", {
           items: found.map((a) => ({ company: a.company, title: a.title, url: a.url, applied_at: a.applied_at || null })),
         });
-        if (r.ok) show("done", `Zapisano nowych aplikacji: <b>${r.data.added}</b> (pominięte jako już znane: ${r.data.received - r.data.added}).`);
+        if (r.queued) show("done", `Zapamiętano ${found.length} aplikacji. Program jest wyłączony — wtyczka przekaże je, gdy go uruchomisz.`);
+        else if (r.ok) show("done", `Zapisano nowych aplikacji: <b>${r.data.added}</b> (pominięte jako już znane: ${r.data.received - r.data.added}).`);
         else show("off", "Nie udało się zapisać — czy program didIJJIT działa?");
       }],
     ]);
